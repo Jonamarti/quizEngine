@@ -1,0 +1,12 @@
+{
+  "name": "quiz-engine",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Motor de examenes tipo test, agnostico del tema. Sin dependencias ni build.",
+  "scripts": {
+    "validar": "node scripts/validar.js",
+    "construir": "node scripts/construir.js",
+    "humo": "node pruebas/humo.js"
+  },
+  "license": "MIT"
+}
