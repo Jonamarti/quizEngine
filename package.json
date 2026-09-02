@@ -1,12 +1,36 @@
 {
   "name": "quiz-engine",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "private": true,
   "description": "Motor de examenes tipo test, agnostico del tema. Sin dependencias ni build.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Jonamarti/quizEngine.git"
+  },
+  "bin": {
+    "quiz-validar": "scripts/validar.js",
+    "quiz-construir": "scripts/construir.js",
+    "quiz-humo": "pruebas/humo.js"
+  },
+  "files": [
+    "web",
+    "scripts",
+    "pruebas/humo.js",
+    "ESQUEMA.md"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
     "validar": "node scripts/validar.js",
     "construir": "node scripts/construir.js",
-    "humo": "node pruebas/humo.js"
+    "humo": "node pruebas/humo.js",
+    "test": "node --test",
+    "demo": "node scripts/construir.js --tema pruebas/tema-ejemplo --salida salida-pruebas",
+    "test:e2e": "npm run demo && node pruebas/humo.js salida-pruebas"
   },
-  "license": "MIT"
+  "devDependencies": {
+    "playwright": "^1.49.0"
+  }
 }

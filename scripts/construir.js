@@ -62,7 +62,7 @@ function main() {
 
   // Los <script> del tema se generan aquí. Añadir un fichero al banco no debería obligar a editar el index.html a mano
   const tags = ['<script src="tema/config.js"></script>']
-    .concat(banco.map((f) => '  <script src="tema/banco/' + f + '"></script>'))
+    .concat(banco.map((f) => '<script src="tema/banco/' + f + '"></script>'))
     .join('\n  ');
 
   const indice = path.join(salida, 'index.html');

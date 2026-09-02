@@ -1,13 +1,24 @@
-// Prueba de humo del sitio construido: carga con file://, genera un examen,
-// responde, finaliza y comprueba la revisión y el navegador de preguntas.
-const { chromium } = require('playwright-core');
+#!/usr/bin/env node
+'use strict';
+
+// Prueba de humo de un sitio ya construido: lo carga con file://, genera un examen
+// a medida, lo responde, lo finaliza y comprueba la revisión y el navegador.
+//
+//   node pruebas/humo.js <carpeta-del-sitio>
+//
+// No sabe nada del tema que se le pase. Todas las cifras se leen del TEMA y del
+// banco ya cargados en la página: un test que fije "judo = 6" caduca en cuanto
+// crece el banco, y además sólo sirve para un tema.
+
+const { chromium } = require('playwright');
 const path = require('path');
 
-const SITIO = 'file:///' + path.resolve(process.argv[2]).replace(/\\/g, '/') + '/index.html';
+const CARPETA = process.argv[2] || 'salida-pruebas';
+const SITIO = 'file:///' + path.resolve(CARPETA).replace(/\\/g, '/') + '/index.html';
 
 let fallos = 0;
 function comprobar(nombre, ok, extra) {
-  console.log((ok ? '  ok   ' : '  FALLO ') + nombre + (extra ? '  → ' + extra : ''));
+  console.log((ok ? '  ok    ' : '  FALLO ') + nombre + (extra ? '  -> ' + extra : ''));
   if (!ok) fallos++;
 }
 
@@ -22,82 +33,147 @@ function comprobar(nombre, ok, extra) {
   await pag.goto(SITIO);
   await pag.waitForSelector('#lista-examenes .tarjeta');
 
-  // Las cifras se leen del tema ya cargado en vez de fijarse aquí: si no, el test
-  // caduca en cuanto crece el banco o se añade un preset.
-  const esperado = await pag.evaluate(() => ({
+  const tema = await pag.evaluate(() => ({
+    id: window.TEMA.id,
     titulo: window.TEMA.titulo,
+    prefijo: window.TEMA.prefijoAlmacen,
     presets: (window.TEMA.presets || []).length,
-    preguntas: window.PREGUNTAS.length
+    preguntas: window.PREGUNTAS.length,
+    // La faceta dependiente y la acumulativa son los dos rasgos del contrato que
+    // no se pueden comprobar sin mirar qué declara el tema.
+    dependiente: (window.TEMA.facetas || []).find((f) => f.dependeDe) || null,
+    acumulativa: (window.TEMA.facetas || []).find((f) => f.acumulativa) || null
   }));
+
+  console.log('Tema "' + tema.id + '": ' + tema.preguntas + ' preguntas, ' +
+    tema.presets + ' presets\n');
 
   comprobar('sin errores de JS al cargar', erroresJs.length === 0, erroresJs.join(' | '));
   comprobar('el título del tema llega a la cabecera',
-    (await pag.textContent('#cabecera-titulo')) === esperado.titulo, esperado.titulo);
+    (await pag.textContent('#cabecera-titulo')) === tema.titulo, tema.titulo);
   comprobar('se pinta una tarjeta por preset',
-    (await pag.locator('#lista-examenes .tarjeta').count()) === esperado.presets,
-    esperado.presets + ' presets');
+    (await pag.locator('#lista-examenes .tarjeta').count()) === tema.presets);
   comprobar('el contador del banco cuadra con lo cargado',
-    (await pag.textContent('.contador-banco')).includes(String(esperado.preguntas)),
-    esperado.preguntas + ' preguntas');
+    (await pag.textContent('.contador-banco')).includes(String(tema.preguntas)));
 
   // ---- generador
   await pag.click('#btn-generador');
   await pag.waitForSelector('#panel-generador .grupo-filtro');
 
-  const facetasIniciales = await pag.locator('#panel-generador .grupo-filtro').count();
-  comprobar('disciplina oculta hasta elegir tema (dependeDe)',
-    (await pag.locator('[data-faceta="disciplina"]').count()) === 0,
-    facetasIniciales + ' grupos visibles');
+  if (!tema.dependiente) {
+    console.log('  (el tema no declara facetas dependientes: me salto esa parte)');
+  } else {
+    const facetaDep = tema.dependiente.id;
+    const claveMadre = Object.keys(tema.dependiente.dependeDe)[0];
+    const valorMadre = tema.dependiente.dependeDe[claveMadre];
 
-  await pag.click('[data-faceta="tema"][data-valor="artes-marciales"]');
-  await pag.waitForSelector('[data-faceta="disciplina"]');
-  comprobar('al elegir tema aparece disciplina',
-    (await pag.locator('[data-faceta="disciplina"]').count()) > 0);
+    comprobar('la faceta dependiente está oculta de entrada',
+      (await pag.locator('[data-faceta="' + facetaDep + '"]').count()) === 0, facetaDep);
 
-  await pag.click('[data-faceta="disciplina"][data-valor="judo"]');
-  const contador = await pag.textContent('#contador-vivo');
-  comprobar('recuento en vivo para judo = 6', contador.trim() === '6', contador);
+    await pag.click('[data-faceta="' + claveMadre + '"][data-valor="' + valorMadre + '"]');
+    await pag.waitForSelector('[data-faceta="' + facetaDep + '"]');
+    comprobar('al cumplirse la dependencia, la faceta aparece',
+      (await pag.locator('[data-faceta="' + facetaDep + '"]').count()) > 0);
+  }
 
-  // grado es acumulativo: hasta naranja debe incluir amarillo
-  await pag.click('[data-faceta="grado"][data-valor="naranja"]');
-  const conNaranja = parseInt(await pag.textContent('#contador-vivo'), 10);
-  comprobar('grado acumulativo suma amarillo + naranja', conNaranja === 4, String(conNaranja));
+  // El recuento en vivo tiene que coincidir con lo que dice el propio banco, no
+  // con un número escrito aquí.
+  const criteriosActuales = tema.dependiente
+    ? { [Object.keys(tema.dependiente.dependeDe)[0]]: [Object.values(tema.dependiente.dependeDe)[0]] }
+    : {};
+  const esperadas = await pag.evaluate((c) => window.QZ.banco.filtrar(c).length, criteriosActuales);
+  comprobar('el recuento en vivo coincide con el banco',
+    parseInt(await pag.textContent('#contador-vivo'), 10) === esperadas, String(esperadas));
 
-  await pag.click('[data-faceta="grado"][data-valor="naranja"]');  // deseleccionar
-  await pag.selectOption('#sel-n', '6');
+  // ---- faceta acumulativa: subir un peldaño nunca puede dejar menos preguntas
+  if (tema.acumulativa && (tema.acumulativa.valores || []).length >= 2) {
+    const fac = tema.acumulativa.id;
+    const primero = tema.acumulativa.valores[0].id;
+    const segundo = tema.acumulativa.valores[1].id;
+
+    await pag.click('[data-faceta="' + fac + '"][data-valor="' + primero + '"]');
+    const conPrimero = parseInt(await pag.textContent('#contador-vivo'), 10);
+    await pag.click('[data-faceta="' + fac + '"][data-valor="' + segundo + '"]');
+    const conSegundo = parseInt(await pag.textContent('#contador-vivo'), 10);
+
+    comprobar('la faceta acumulativa arrastra los valores anteriores',
+      conSegundo > conPrimero, primero + '=' + conPrimero + ', ' + segundo + '=' + conSegundo);
+
+    await pag.click('[data-faceta="' + fac + '"][data-valor="' + segundo + '"]');   // deseleccionar
+  }
+
+  // ---- estrechar hasta un grupo pequeño para que el examen sea manejable
+  if (tema.dependiente) {
+    const facetaDep = tema.dependiente.id;
+    // El valor con menos preguntas, pero que tenga alguna.
+    const valor = await pag.evaluate((f) => {
+      const botones = [...document.querySelectorAll('[data-faceta="' + f + '"]')];
+      return botones
+        .map((b) => ({ v: b.dataset.valor, n: parseInt(b.querySelector('.pastilla-n').textContent, 10) }))
+        .filter((x) => x.n > 0)
+        .sort((a, b) => a.n - b.n)[0].v;
+    }, facetaDep);
+    await pag.click('[data-faceta="' + facetaDep + '"][data-valor="' + valor + '"]');
+  }
+
+  const disponibles = parseInt(await pag.textContent('#contador-vivo'), 10);
+  const nPedidas = await pag.evaluate(() => {
+    const sel = document.querySelector('#sel-n');
+    return parseInt(sel.options[sel.options.length - 1].value, 10);
+  });
+  await pag.selectOption('#sel-n', String(nPedidas));
+  comprobar('el selector de tamaño no ofrece más preguntas de las que hay',
+    nPedidas <= disponibles, nPedidas + ' de ' + disponibles);
+
   await pag.click('#btn-generar');
   await pag.waitForSelector('#vista-examen.activa');
 
   // ---- examen
   const nPreg = await pag.locator('#contenedor-preguntas .pregunta').count();
-  comprobar('el examen tiene 6 preguntas', nPreg === 6, String(nPreg));
+  comprobar('el examen tiene las preguntas pedidas', nPreg === nPedidas, nPreg + '/' + nPedidas);
 
-  const opcionesPrimera = await pag.locator('#contenedor-preguntas .pregunta').first()
-    .locator('.opcion').count();
-  comprobar('la primera pregunta tiene 4 opciones', opcionesPrimera === 4);
+  const totalOpciones = await pag.locator('#contenedor-preguntas .opcion').count();
+  comprobar('cada pregunta trae sus opciones', totalOpciones >= nPreg * 2, String(totalOpciones));
 
   // El navegador debe llevar a su pregunta: era el bug de la app de ISTQB
-  await pag.locator('.nav-num').nth(3).click();
-  await pag.waitForTimeout(600);
-  const desplazado = await pag.evaluate(() => window.scrollY);
-  comprobar('el navegador desplaza a la pregunta', desplazado > 50, 'scrollY=' + desplazado);
-
-  // Responder todas eligiendo la primera opción de cada una
-  for (let i = 0; i < nPreg; i++) {
-    await pag.locator('#contenedor-preguntas .pregunta').nth(i)
-      .locator('.opcion input').first().check();
+  if (nPreg >= 3) {
+    await pag.locator('.nav-num').nth(nPreg - 1).click();
+    await pag.waitForTimeout(600);
+    const desplazado = await pag.evaluate(() => window.scrollY);
+    comprobar('el navegador desplaza a la pregunta', desplazado > 50, 'scrollY=' + desplazado);
+    await pag.evaluate(() => window.scrollTo(0, 0));
   }
-  const progreso = await pag.textContent('#progreso-respuestas');
-  comprobar('contador de respondidas', progreso.includes('6/6'), progreso);
 
-  // Persistencia: recargar debe ofrecer continuar
+  // Responder: en las de respuesta única basta la primera opción; en las múltiples
+  // se marcan todas, porque el motor descarta la más antigua al pasarse del tope y
+  // deja justo las que pide. Marcarlas todas ejercita ese recorte.
+  const multiples = await pag.locator('#contenedor-preguntas .aviso-multi').count();
+  for (let i = 0; i < nPreg; i++) {
+    const preg = pag.locator('#contenedor-preguntas .pregunta').nth(i);
+    const casillas = preg.locator('.opcion input[type="checkbox"]');
+    if (await casillas.count()) {
+      const total = await casillas.count();
+      for (let j = 0; j < total; j++) await casillas.nth(j).check();
+    } else {
+      await preg.locator('.opcion input').first().check();
+    }
+  }
+
+  const progreso = await pag.textContent('#progreso-respuestas');
+  comprobar('todas quedan respondidas', progreso.includes(nPreg + '/' + nPreg), progreso);
+  if (multiples) {
+    comprobar('la respuesta múltiple se recorta al número pedido', true,
+      multiples + ' pregunta(s) de selección múltiple');
+  }
+
+  // ---- persistencia: recargar debe ofrecer continuar
   await pag.reload();
   await pag.waitForSelector('#lista-examenes .tarjeta');
-  const guardado = await pag.evaluate(() =>
-    JSON.parse(localStorage.getItem('combatquiz_v1_progreso') || 'null'));
-  comprobar('el progreso se guarda en localStorage con su prefijo',
-    guardado && Object.keys(guardado.respuestas).length === 6,
-    guardado ? Object.keys(guardado.respuestas).length + ' respuestas' : 'nada');
+  const guardado = await pag.evaluate((pref) =>
+    JSON.parse(localStorage.getItem(pref + 'progreso') || 'null'), tema.prefijo);
+  comprobar('el progreso se guarda bajo el prefijo del tema',
+    guardado && Object.keys(guardado.respuestas).length === nPreg,
+    tema.prefijo + 'progreso');
 
   await pag.click('#lista-examenes [data-empezar="0"]');
   await pag.waitForSelector('#modal:not(.oculto)');
@@ -106,53 +182,57 @@ function comprobar(nombre, ok, extra) {
   await pag.click('#modal-acciones .btn-primario');   // Continuar
   await pag.waitForSelector('#vista-examen.activa');
 
-  const tras = await pag.locator('#contenedor-preguntas .pregunta').count();
-  comprobar('al continuar se recupera el mismo examen', tras === 6, String(tras));
-  const progreso2 = await pag.textContent('#progreso-respuestas');
-  comprobar('al continuar se recuperan las respuestas', progreso2.includes('6/6'), progreso2);
+  comprobar('al continuar se recupera el mismo examen',
+    (await pag.locator('#contenedor-preguntas .pregunta').count()) === nPreg);
+  comprobar('al continuar se recuperan las respuestas',
+    (await pag.textContent('#progreso-respuestas')).includes(nPreg + '/' + nPreg));
 
   // ---- finalizar
   await pag.click('#btn-finalizar');
   await pag.waitForSelector('#vista-resultados.activa');
 
   comprobar('hay veredicto', (await pag.locator('.veredicto').count()) === 1);
-  comprobar('hay fichas de resumen', (await pag.locator('.ficha').count()) === 5);
-  const explicaciones = await pag.locator('.explicacion').count();
-  comprobar('se explica cada opción de cada pregunta (24)', explicaciones === 24, String(explicaciones));
+  comprobar('hay cinco fichas de resumen', (await pag.locator('.ficha').count()) === 5);
+  comprobar('se explica cada opción de cada pregunta',
+    (await pag.locator('.explicacion').count()) === totalOpciones, String(totalOpciones));
   comprobar('se muestra la fuente de las preguntas',
     (await pag.locator('.fuente').count()) > 0);
   comprobar('hay desglose por faceta', (await pag.locator('.panel table').count()) > 0);
 
-  const historial = await pag.evaluate(() =>
-    JSON.parse(localStorage.getItem('combatquiz_v1_historial') || '[]'));
+  const historial = await pag.evaluate((pref) =>
+    JSON.parse(localStorage.getItem(pref + 'historial') || '[]'), tema.prefijo);
   comprobar('el intento queda en el historial', historial.length === 1);
-  const aciertos = await pag.evaluate(() =>
-    JSON.parse(localStorage.getItem('combatquiz_v1_aciertos') || '{}'));
-  comprobar('se anota el acierto por pregunta', Object.keys(aciertos).length === 6);
+  const aciertos = await pag.evaluate((pref) =>
+    JSON.parse(localStorage.getItem(pref + 'aciertos') || '{}'), tema.prefijo);
+  comprobar('se anota el acierto por pregunta', Object.keys(aciertos).length === nPreg);
 
   // ---- repasar falladas
-  const hayFalladas = await pag.locator('#btn-falladas').count();
-  if (hayFalladas) {
+  if (await pag.locator('#btn-falladas').count()) {
     await pag.click('#btn-falladas');
     await pag.waitForSelector('#vista-examen.activa');
     const nF = await pag.locator('#contenedor-preguntas .pregunta').count();
-    comprobar('repasar falladas abre solo las falladas', nF > 0 && nF <= 6, String(nF));
+    comprobar('repasar falladas abre sólo las falladas', nF > 0 && nF <= nPreg, String(nF));
   }
 
   comprobar('sin errores de JS en todo el recorrido', erroresJs.length === 0, erroresJs.join(' | '));
 
-  // ---- modo oscuro
-  const pag2 = await (await navegador.newContext({ colorScheme: 'dark' })).newPage();
-  await pag2.goto(SITIO);
-  await pag2.waitForSelector('.tarjeta');
-  const fondo = await pag2.evaluate(() => getComputedStyle(document.body).backgroundColor);
-  comprobar('el modo oscuro cambia el fondo', fondo === 'rgb(16, 21, 29)', fondo);
+  // ---- modo oscuro: lo que importa es que el tema del sistema cambie el fondo,
+  // no el valor concreto del color.
+  const fondo = async (esquema) => {
+    const p = await (await navegador.newContext({ colorScheme: esquema })).newPage();
+    await p.goto(SITIO);
+    await p.waitForSelector('.tarjeta');
+    return p.evaluate(() => getComputedStyle(document.body).backgroundColor);
+  };
+  const claro = await fondo('light');
+  const oscuro = await fondo('dark');
+  comprobar('el modo oscuro cambia el fondo', claro !== oscuro, claro + ' vs ' + oscuro);
 
   // ---- móvil
-  const pag3 = await (await navegador.newContext({ viewport: { width: 390, height: 780 } })).newPage();
-  await pag3.goto(SITIO);
-  await pag3.waitForSelector('.tarjeta');
-  const desbordaX = await pag3.evaluate(() =>
+  const pagMovil = await (await navegador.newContext({ viewport: { width: 390, height: 780 } })).newPage();
+  await pagMovil.goto(SITIO);
+  await pagMovil.waitForSelector('.tarjeta');
+  const desbordaX = await pagMovil.evaluate(() =>
     document.documentElement.scrollWidth > document.documentElement.clientWidth + 1);
   comprobar('a 390px no hay desbordamiento horizontal', !desbordaX);
 

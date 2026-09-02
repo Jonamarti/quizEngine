@@ -1,0 +1,37 @@
+name: Release
+
+# Los repos de datos consumen el motor por tag, así que una versión publicada es
+# un tag empujado. Aquí se vuelve a validar todo y se adjunta el tarball para que
+# quede constancia de qué contenía exactamente esa versión.
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  publicar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - run: npm ci
+      - run: npm test
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:e2e
+
+      - name: Empaquetar
+        run: |
+          npm pack
+          ls -la *.tgz
+
+      - name: Crear la Release
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          files: '*.tgz'
