@@ -79,7 +79,7 @@ test('con barajarOpciones false el orden es el de origen', () => {
 
 test('el orden de opciones es una permutación completa, sin perder ni repetir', () => {
   const { examen } = nuevo();
-  const e = examen.construir({ filtros: {}, n: 14, semilla: 55 });
+  const e = examen.construir({ filtros: {}, n: 15, semilla: 55 });
   e.items.forEach((i) => {
     const esperado = i.pregunta.opciones.map((_, k) => k);
     assert.deepEqual(i.orden.slice().sort((x, y) => x - y), esperado, i.pregunta.id);
@@ -158,17 +158,17 @@ test('respondida exige tantas marcas como pida la pregunta', () => {
 
 test('el desglose por faceta suma el total de preguntas de esa faceta', () => {
   const { examen } = nuevo();
-  const e = examen.construir({ filtros: {}, n: 14, semilla: 2 });
+  const e = examen.construir({ filtros: {}, n: 15, semilla: 2 });
   const r = examen.corregir(e, {});
   const tabla = examen.desglose(r, 'materia');
 
-  assert.equal(tabla.geografia.total, 9);
+  assert.equal(tabla.geografia.total, 10);
   assert.equal(tabla.astronomia.total, 5);
   assert.equal(tabla.geografia.ok, 0);
 
   // continente sólo lo declaran las de geografía: las demás no deben contarse.
   const porContinente = examen.desglose(r, 'continente');
-  assert.equal(porContinente.europa.total + porContinente.america.total, 9);
+  assert.equal(porContinente.europa.total + porContinente.america.total, 10);
 });
 
 test('el desglose cuenta los aciertos', () => {

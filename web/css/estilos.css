@@ -293,3 +293,22 @@ th { color: var(--texto-suave); font-weight: 600; }
   .navegador { position: static; }
   .barra-examen { position: static; }
 }
+
+/* Imagen de una pregunta: identificar una técnica por su dibujo. Se limita la
+   altura para que la imagen no empuje las opciones fuera de pantalla en móvil,
+   que es donde más se responde. */
+.imagen-pregunta { margin: 0 0 12px; }
+.imagen-pregunta img {
+  display: block;
+  max-width: 100%;
+  max-height: 320px;
+  margin: 0 auto;
+  border-radius: var(--radio);
+  background: #fff;
+}
+.imagen-pregunta figcaption {
+  margin-top: 6px;
+  font-size: .75rem;
+  color: var(--texto-suave);
+  text-align: center;
+}

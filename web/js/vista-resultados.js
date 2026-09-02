@@ -55,6 +55,7 @@
           insignia + ui.chips(p) +
         '</div>' +
         '<p class="enunciado">' + esc(p.enunciado) + '</p>' +
+        ui.imagenPregunta(p) +
         '<div class="opciones">';
 
       r.orden.forEach(function (orig, pos) {

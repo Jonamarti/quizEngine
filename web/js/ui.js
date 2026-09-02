@@ -109,4 +109,18 @@
       return partes.length ? partes.join(' · ') : t('cualquiera');
     }
   };
+
+  // Imagen opcional de una pregunta: identificar una técnica por su dibujo. El
+  // credito va pegado a la imagen porque las licencias tipo CC BY-SA obligan a
+  // atribuir donde se usa la obra, no en una pagina aparte.
+  QZ.ui.imagenPregunta = function (p) {
+    if (!p.imagen || !p.imagen.src) return '';
+    return '<figure class="imagen-pregunta">' +
+      '<img src="' + QZ.ui.esc(p.imagen.src) + '"' +
+        ' alt="' + QZ.ui.esc(p.imagen.alt || '') + '" loading="lazy">' +
+      (p.imagen.credito
+        ? '<figcaption>' + QZ.ui.esc(p.imagen.credito) + '</figcaption>'
+        : '') +
+      '</figure>';
+  };
 })(typeof window !== 'undefined' ? window : globalThis);

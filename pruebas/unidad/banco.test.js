@@ -10,31 +10,31 @@ function nuevo() {
 
 test('init indexa el banco y deja las preguntas accesibles por id', () => {
   const banco = nuevo();
-  assert.equal(banco.todas().length, 14);
+  assert.equal(banco.todas().length, 15);
   assert.equal(banco.porId('ej-geo-001').facetas.continente, 'europa');
   assert.equal(banco.porId('no-existe'), undefined);
 });
 
 test('sin criterios devuelve el banco entero', () => {
   const banco = nuevo();
-  assert.equal(banco.filtrar({}).length, 14);
-  assert.equal(banco.filtrar().length, 14);
+  assert.equal(banco.filtrar({}).length, 15);
+  assert.equal(banco.filtrar().length, 15);
 });
 
 test('un array de valores vacío no filtra nada', () => {
   const banco = nuevo();
-  assert.equal(banco.filtrar({ materia: [] }).length, 14);
+  assert.equal(banco.filtrar({ materia: [] }).length, 15);
 });
 
 test('filtra por un valor de faceta', () => {
   const banco = nuevo();
-  assert.equal(banco.filtrar({ materia: ['geografia'] }).length, 9);
+  assert.equal(banco.filtrar({ materia: ['geografia'] }).length, 10);
   assert.equal(banco.filtrar({ materia: ['astronomia'] }).length, 5);
 });
 
 test('varios valores de la misma faceta se suman', () => {
   const banco = nuevo();
-  assert.equal(banco.filtrar({ materia: ['geografia', 'astronomia'] }).length, 14);
+  assert.equal(banco.filtrar({ materia: ['geografia', 'astronomia'] }).length, 15);
 });
 
 test('varias facetas se cruzan', () => {
@@ -50,8 +50,8 @@ test('una faceta acumulativa arrastra los valores anteriores', () => {
   const avanzado = banco.filtrar({ nivel: ['avanzado'] }).length;
 
   assert.equal(inicial, 7);
-  assert.equal(medio, 12);
-  assert.equal(avanzado, 14);
+  assert.equal(medio, 13);
+  assert.equal(avanzado, 15);
   assert.ok(inicial < medio && medio < avanzado, 'cada nivel debe incluir al anterior');
 });
 
@@ -65,7 +65,7 @@ test('una pregunta sin la faceta pedida queda fuera', () => {
   const banco = nuevo();
   // Las de astronomía no declaran continente, así que no pueden colarse aquí.
   const r = banco.filtrar({ continente: ['europa', 'america'] });
-  assert.equal(r.length, 9);
+  assert.equal(r.length, 10);
   assert.ok(r.every((p) => p.facetas.materia === 'geografia'));
 });
 
@@ -78,7 +78,7 @@ test('idsPermitidos recorta el resultado', () => {
 test('disponibles cuenta por valor ignorando el criterio de su propio eje', () => {
   const banco = nuevo();
   const cuenta = banco.disponibles('continente', { materia: ['geografia'] });
-  assert.deepEqual(cuenta, { europa: 6, america: 3 });
+  assert.deepEqual(cuenta, { europa: 7, america: 3 });
 
   // El criterio sobre la propia faceta no debe estrechar su recuento: si no, al
   // seleccionar un valor los demás se quedarían a cero y no se podrían añadir.

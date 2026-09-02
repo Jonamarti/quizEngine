@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 140" width="200" height="140" role="img">
+  <title>Silueta esquemática de una península</title>
+  <rect width="200" height="140" fill="#dcecf7"/>
+  <path d="M20 30 L150 25 L175 60 L160 105 L95 120 L45 100 L25 65 Z"
+        fill="#c9b98a" stroke="#8a7a4e" stroke-width="2"/>
+  <path d="M150 25 L175 60 L160 105" fill="none" stroke="#8a7a4e" stroke-width="2"/>
+  <circle cx="60" cy="60" r="4" fill="#8a3b2e"/>
+  <circle cx="120" cy="70" r="4" fill="#8a3b2e"/>
+</svg>

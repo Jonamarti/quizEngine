@@ -93,7 +93,7 @@ test('el sitio construido carga el tema entero', (t) => {
   cargar('tema/banco/geografia.js');
 
   assert.equal(ctx.TEMA.id, 'ejemplo');
-  assert.equal(ctx.PREGUNTAS.length, 14);
+  assert.equal(ctx.PREGUNTAS.length, 15);
 });
 
 test('reconstruir sobre el mismo destino no deja restos de la vez anterior', (t) => {
@@ -147,4 +147,32 @@ test('falla si la plantilla del motor ha perdido el marcador', (t) => {
       '--tema', EJEMPLO, '--salida', path.join(dir, 'otro')], { encoding: 'utf8' });
   assert.equal(r.status, 1);
   assert.match(r.stderr, /marcador/);
+});
+
+test('la carpeta medios del tema se copia al sitio', (t) => {
+  const dir = tmp(t);
+  const destino = path.join(dir, 'sitio');
+  const r = construir(EJEMPLO, destino);
+
+  assert.equal(r.codigo, 0, r.salida);
+  const imagen = path.join(destino, 'medios', 'peninsula.svg');
+  assert.ok(fs.existsSync(imagen), 'medios/peninsula.svg no llegó al sitio');
+  // Copiada entera, no truncada: es lo que permite abrir el examen sin conexión.
+  assert.equal(
+    fs.readFileSync(imagen, 'utf8'),
+    fs.readFileSync(path.join(EJEMPLO, 'medios', 'peninsula.svg'), 'utf8'));
+});
+
+test('un tema sin carpeta medios se construye igual', (t) => {
+  const dir = tmp(t);
+  const tema = path.join(dir, 'tema-sin-medios');
+  fs.mkdirSync(path.join(tema, 'banco'), { recursive: true });
+  fs.writeFileSync(path.join(tema, 'config.js'),
+    '(function (g) { g.TEMA = { id: "x" }; })(typeof window !== "undefined" ? window : globalThis);');
+  fs.writeFileSync(path.join(tema, 'banco', 'b.js'),
+    '(function (g) { g.PREGUNTAS = g.PREGUNTAS || []; })(typeof window !== "undefined" ? window : globalThis);');
+
+  const r = construir(tema, path.join(dir, 'sitio'));
+  assert.equal(r.codigo, 0, r.salida);
+  assert.ok(!fs.existsSync(path.join(dir, 'sitio', 'medios')));
 });

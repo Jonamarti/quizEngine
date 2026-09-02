@@ -60,6 +60,16 @@ function main() {
     fs.copyFileSync(path.join(dirBanco, f), path.join(salida, 'tema', 'banco', f));
   }
 
+  // Las imágenes de las preguntas viajan enteras al sitio: no se pueden servir
+  // desde una URL externa porque el examen debe funcionar con file:// y sin
+  // conexión. Las preguntas las referencian como "medios/loquesea.svg".
+  const dirMedios = path.join(tema, 'medios');
+  let medios = 0;
+  if (fs.existsSync(dirMedios)) {
+    copiarDir(dirMedios, path.join(salida, 'medios'));
+    medios = fs.readdirSync(dirMedios).filter((f) => !f.startsWith('.')).length;
+  }
+
   // Los <script> del tema se generan aquí. Añadir un fichero al banco no debería obligar a editar el index.html a mano
   const tags = ['<script src="tema/config.js"></script>']
     .concat(banco.map((f) => '<script src="tema/banco/' + f + '"></script>'))
@@ -76,6 +86,7 @@ function main() {
 
   console.log('Construido en ' + salida);
   console.log('  ' + banco.length + ' fichero(s) de banco: ' + banco.join(', '));
+  if (medios) console.log('  ' + medios + ' fichero(s) en medios/');
 }
 
 main();

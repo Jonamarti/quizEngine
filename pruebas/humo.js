@@ -216,6 +216,35 @@ function comprobar(nombre, ok, extra) {
 
   comprobar('sin errores de JS en todo el recorrido', erroresJs.length === 0, erroresJs.join(' | '));
 
+  // ---- imágenes de pregunta, si el tema declara alguna
+  const conImagen = await pag.evaluate(() =>
+    (window.PREGUNTAS || []).filter((p) => p.imagen && p.imagen.src).map((p) => p.imagen.src));
+
+  if (!conImagen.length) {
+    console.log('  (el tema no tiene preguntas con imagen: me salto esa parte)');
+  } else {
+    // Que el marcado se genere no basta: lo que rompe la pregunta es que el
+    // fichero no haya llegado al sitio construido, y eso sólo se ve cargándolo.
+    const marcado = await pag.evaluate(() => {
+      const p = window.PREGUNTAS.find((x) => x.imagen && x.imagen.src);
+      return window.QZ.ui.imagenPregunta(p);
+    });
+    comprobar('la imagen de una pregunta genera su figure con alt',
+      marcado.includes('<figure') && marcado.includes('alt="'), marcado.slice(0, 60) + '…');
+
+    const cargadas = await pag.evaluate((rutas) => Promise.all(rutas.map((src) =>
+      new Promise((res) => {
+        const img = new Image();
+        img.onload = () => res(true);
+        img.onerror = () => res(false);
+        img.src = src;
+      }))), conImagen);
+    const fallidas = conImagen.filter((_, i) => !cargadas[i]);
+    comprobar('todas las imágenes referenciadas se cargan desde el sitio construido',
+      fallidas.length === 0,
+      fallidas.length ? 'no cargan: ' + fallidas.join(', ') : conImagen.length + ' imagen(es)');
+  }
+
   // ---- modo oscuro: lo que importa es que el tema del sistema cambie el fondo,
   // no el valor concreto del color.
   const fondo = async (esquema) => {

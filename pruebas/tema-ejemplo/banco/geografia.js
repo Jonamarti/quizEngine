@@ -113,6 +113,26 @@
       ]
     },
     {
+      // Única pregunta con imagen del tema de ejemplo: ejercita el campo `imagen`
+      // del contrato y es contra la que corre la prueba de humo.
+      id: 'ej-geo-010',
+      enunciado: '¿Qué accidente geográfico representa este esquema?',
+      facetas: { materia: 'geografia', continente: 'europa', nivel: 'medio' },
+      imagen: {
+        src: 'medios/peninsula.svg',
+        alt: 'Esquema de una masa de tierra rodeada de agua por tres de sus lados',
+        credito: 'Esquema propio, dominio público'
+      },
+      fuente: 'Instituto Geográfico Nacional',
+      origen: 'autorada',
+      opciones: [
+        { texto: 'Una península', correcta: true, explicacion: 'Una masa de tierra rodeada de agua por todos sus lados menos uno, que la une al continente.' },
+        { texto: 'Una isla', correcta: false, explicacion: 'Una isla está rodeada de agua por todos sus lados, sin conexión con tierra firme.' },
+        { texto: 'Un golfo', correcta: false, explicacion: 'Un golfo es entrante de mar en la tierra, no saliente de tierra en el mar.' },
+        { texto: 'Un istmo', correcta: false, explicacion: 'Un istmo es la franja estrecha que une dos masas mayores, no la masa en sí.' }
+      ]
+    },
+    {
       id: 'ej-geo-009',
       enunciado: '¿Cuáles de estos países tienen costa en el océano Pacífico?',
       facetas: { materia: 'geografia', continente: 'america', nivel: 'medio' },

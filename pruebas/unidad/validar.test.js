@@ -87,7 +87,7 @@ test('un tema correcto pasa y sale con 0', (t) => {
 test('el tema de ejemplo del repo sigue siendo válido', () => {
   const r = validar(path.join(RAIZ, 'pruebas', 'tema-ejemplo'));
   assert.equal(r.codigo, 0, r.salida);
-  assert.match(r.salida, /14 preguntas en 2 fichero\(s\)/);
+  assert.match(r.salida, /15 preguntas en 2 fichero\(s\)/);
 });
 
 test('id duplicado', (t) => {
@@ -192,4 +192,64 @@ test('la cobertura cruza dos facetas y señala los huecos', (t) => {
   assert.match(r.stdout, /Cobertura materia x nivel/);
   // Todas las preguntas del banco base son a/uno: las otras tres celdas están vacías.
   assert.match(r.stdout, /3 combinación\(es\) sin preguntas/);
+});
+
+// ---- imagen de una pregunta
+//
+// Una imagen rota no rompe la carga de la página: la pregunta aparece sin ella y
+// se vuelve incontestable, porque lo que hay que identificar es el dibujo. De ahí
+// que el validador tenga que ser estricto aquí.
+
+function conImagen(t, imagen) {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'qz-tema-'));
+  t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
+  const preguntas = bancoBase();
+  preguntas[0].imagen = imagen;
+  escribirTema(dir, temaBase(), preguntas);
+  fs.mkdirSync(path.join(dir, 'medios'), { recursive: true });
+  fs.writeFileSync(path.join(dir, 'medios', 'existe.svg'), '<svg xmlns="http://www.w3.org/2000/svg"/>');
+  return validar(dir);
+}
+
+test('una imagen correcta pasa la validación', (t) => {
+  const r = conImagen(t, { src: 'medios/existe.svg', alt: 'Un dibujo', credito: 'Autoría propia' });
+  assert.equal(r.codigo, 0, r.salida);
+});
+
+test('una imagen que apunta a un fichero inexistente falla', (t) => {
+  const r = conImagen(t, { src: 'medios/no-esta.svg', alt: 'Un dibujo', credito: 'x' });
+  assert.equal(r.codigo, 1);
+  assert.match(r.salida, /no existe el fichero de imagen/);
+});
+
+test('una imagen sin texto alternativo falla', (t) => {
+  const r = conImagen(t, { src: 'medios/existe.svg', credito: 'x' });
+  assert.equal(r.codigo, 1);
+  assert.match(r.salida, /no tiene texto alternativo/);
+});
+
+test('una imagen alojada fuera del tema falla', (t) => {
+  // El examen se abre con file:// y sin conexión: una URL externa se vería como
+  // un hueco justo en la pregunta que depende de verla.
+  const r = conImagen(t, { src: 'https://example.org/foto.png', alt: 'Un dibujo', credito: 'x' });
+  assert.equal(r.codigo, 1);
+  assert.match(r.salida, /URL externa/);
+});
+
+test('una imagen fuera de medios/ falla', (t) => {
+  const r = conImagen(t, { src: 'otra-carpeta/foto.svg', alt: 'Un dibujo', credito: 'x' });
+  assert.equal(r.codigo, 1);
+  assert.match(r.salida, /debe empezar por "medios\/"/);
+});
+
+test('una imagen sin crédito es aviso, no error', (t) => {
+  const r = conImagen(t, { src: 'medios/existe.svg', alt: 'Un dibujo' });
+  assert.equal(r.codigo, 0, r.salida);
+  assert.match(r.salida, /no declara crédito/);
+});
+
+test('imagen que no es un objeto falla', (t) => {
+  const r = conImagen(t, 'medios/existe.svg');
+  assert.equal(r.codigo, 1);
+  assert.match(r.salida, /debe ser un objeto/);
 });

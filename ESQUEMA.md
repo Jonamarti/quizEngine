@@ -51,6 +51,35 @@ Reglas que impone el validador:
 - Sin enunciados repetidos en todo el banco.
 - Toda clave y todo valor de `facetas` deben estar declarados en `TEMA.facetas`.
 
+## Imagen de una pregunta
+
+Una pregunta puede llevar una imagen: sirve para pedir que se identifique lo que se
+ve, en vez de describirlo con palabras.
+
+```js
+{
+  id: 'judo-tec-0100',
+  enunciado: '¿Qué técnica muestra el dibujo?',
+  imagen: {
+    src: 'medios/morote-gari.svg',                           // obligatorio, relativo al tema
+    alt: 'Un competidor toma las dos piernas del rival',     // obligatorio
+    credito: 'Judcosta, CC BY-SA 3.0, vía Wikimedia Commons' // recomendado
+  },
+  opciones: [ /* ... */ ]
+}
+```
+
+Los ficheros viven en `tema/medios/` y el constructor los copia a `medios/` dentro
+del sitio. **No se admiten URL externas**: el examen tiene que abrirse con `file://`
+y sin conexión, y una imagen que no carga deja la pregunta sin respuesta posible,
+porque lo que hay que identificar es justo el dibujo. Por eso el validador
+comprueba que el fichero exista antes de construir.
+
+El `alt` es obligatorio y **no puede nombrar la respuesta**: un lector de pantalla
+leería «tai-otoshi» y resolvería la pregunta. Descríbase lo que se ve, no cómo se
+llama. El `credito` se pinta bajo la imagen porque las licencias tipo CC BY-SA
+obligan a atribuir allí donde se usa la obra.
+
 **Las opciones no llevan letra.** El motor las baraja al construir el examen y asigna las
 letras entonces.
 

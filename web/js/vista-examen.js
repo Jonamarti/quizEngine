@@ -63,6 +63,12 @@
       enun.textContent = p.enunciado;
       tarjeta.appendChild(enun);
 
+      if (p.imagen && p.imagen.src) {
+        var figura = document.createElement('div');
+        figura.innerHTML = ui.imagenPregunta(p);
+        tarjeta.appendChild(figura.firstChild);
+      }
+
       var caja = document.createElement('div');
       caja.className = 'opciones';
 
