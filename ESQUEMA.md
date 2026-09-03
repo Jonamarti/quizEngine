@@ -142,6 +142,7 @@ Un examen que he hecho yo manualmente, con filtros fijos.
   titulo: 'Judo · Cinturón Naranja',
   descripcion: 'Programa completo hasta naranja',
   filtros: { disciplina: ['judo'], grado: ['naranja'] },
+  grupo: 'artes-marciales',        // opcional, ver más abajo
   n: 25,
   duracion: '30'
 }
@@ -149,3 +150,27 @@ Un examen que he hecho yo manualmente, con filtros fijos.
 
 Los valores de `filtros` son siempre arrays. Un array vacío o una faceta ausente significan
 «cualquiera».
+
+## Grupos de exámenes
+
+Cuando hay muchos presets, una rejilla plana deja de servir para encontrarlos. Un tema
+puede declarar grupos y repartir sus exámenes entre ellos:
+
+```js
+window.TEMA = {
+  grupos: [
+    { id: 'artes-marciales', etiqueta: 'Artes marciales', descripcion: 'Por disciplina' },
+    { id: 'entrenamiento',   etiqueta: 'Entrenamiento' }
+  ],
+  presets: [ /* cada uno con su `grupo` */ ]
+}
+```
+
+El listado pinta entonces una sección por grupo, en el orden en que se declaran, y una fila
+de pastillas para ver sólo uno. **Es opcional y compatible hacia atrás:** un tema que no
+declare `grupos` se sigue pintando plano, que es lo razonable con cuatro exámenes.
+
+Un preset sin `grupo`, o con uno que el tema no declara, no desaparece: cae en una sección
+final «Otros». El validador avisa del primer caso y da error en el segundo, porque apuntar a
+un grupo inexistente casi siempre es una errata.
+

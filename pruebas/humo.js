@@ -245,6 +245,46 @@ function comprobar(nombre, ok, extra) {
       fallidas.length ? 'no cargan: ' + fallidas.join(', ') : conImagen.length + ' imagen(es)');
   }
 
+  // ---- grupos de exámenes
+  //
+  // Se hace en una pestaña nueva y limpia para no interferir con el progreso que
+  // el recorrido anterior dejó en localStorage.
+  const paginaLimpia = await (await navegador.newContext()).newPage();
+  await paginaLimpia.goto(SITIO);
+  await paginaLimpia.waitForSelector('#lista-examenes .tarjeta');
+
+  const grupos = await paginaLimpia.evaluate(() =>
+    (window.TEMA.grupos || []).map((x) => ({ id: x.id, etiqueta: x.etiqueta })));
+
+  if (!grupos.length) {
+    console.log('  (el tema no declara grupos de exámenes: me salto esa parte)');
+  } else {
+    comprobar('hay una pastilla por grupo, más «Todos»',
+      (await paginaLimpia.locator('[data-grupo]').count()) === grupos.length + 1,
+      grupos.length + ' grupos');
+    comprobar('se pinta un encabezado por grupo',
+      (await paginaLimpia.locator('.grupo-examenes').count()) === grupos.length);
+
+    // Se filtra por el último grupo declarado: si el reparto estuviera mal, el
+    // primero podría acertar por casualidad.
+    const ultimo = grupos[grupos.length - 1];
+    await paginaLimpia.click('[data-grupo="' + ultimo.id + '"]');
+    await paginaLimpia.waitForSelector('.pastilla.activa');
+
+    comprobar('al filtrar queda un solo grupo a la vista',
+      (await paginaLimpia.locator('.grupo-examenes').count()) === 1, ultimo.etiqueta);
+
+    // La regresión que importa: `data-empezar` indexa el array plano de presets,
+    // así que si al agrupar se renumerase, el botón lanzaría otro examen.
+    const tarjeta = paginaLimpia.locator('#lista-examenes .tarjeta').first();
+    const tituloTarjeta = (await tarjeta.locator('h3').textContent()).trim();
+    await tarjeta.locator('[data-empezar]').click();
+    await paginaLimpia.waitForSelector('#vista-examen.activa');
+    const tituloExamen = (await paginaLimpia.textContent('.info-titulo')).trim();
+    comprobar('el botón lanza el examen de su propia tarjeta',
+      tituloExamen === tituloTarjeta, '«' + tituloTarjeta + '» → «' + tituloExamen + '»');
+  }
+
   // ---- modo oscuro: lo que importa es que el tema del sistema cambie el fondo,
   // no el valor concreto del color.
   const fondo = async (esquema) => {

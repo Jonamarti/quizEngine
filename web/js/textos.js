@@ -9,6 +9,9 @@
     sinPreguntas: 'No hay preguntas cargadas. Comprueba que el tema se construyó con su banco.',
 
     listadoTitulo: 'Elige un examen',
+    grupoTitulo: 'Área',
+    grupoTodos: 'Todos',
+    grupoOtros: 'Otros',
     generadorAbrir: 'Generar examen a medida',
     generadorTitulo: 'Generar examen',
     generadorVolver: 'Volver',

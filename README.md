@@ -49,7 +49,7 @@ funcionando, y sirve a la vez de fixture de los tests y de demo.
 
 ```bash
 npm ci
-npm test                       # 63 pruebas de unidad, sin navegador
+npm test                       # 71 pruebas de unidad, sin navegador
 npx playwright install chromium
 npm run test:e2e               # construye el tema de ejemplo y le pasa la prueba de humo
 npm run demo                   # sólo construir la demo, en salida-pruebas/

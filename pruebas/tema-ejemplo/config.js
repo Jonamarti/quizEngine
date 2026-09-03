@@ -26,6 +26,13 @@
 
     tamanos: [3, 5, 6, 10],
 
+    // Dos grupos para que el listado ejercite el reparto en secciones y el filtro
+    // por pastillas. Un tema sin  se pinta plano, y eso también se prueba.
+    grupos: [
+      { id: 'geografia', etiqueta: 'Geografía', descripcion: 'Relieve, ríos y fronteras' },
+      { id: 'astronomia', etiqueta: 'Astronomía' }
+    ],
+
     facetas: [
       {
         id: 'materia',
@@ -59,6 +66,7 @@
     presets: [
       {
         id: 'geo-inicial',
+        grupo: 'geografia',
         titulo: 'Geografía · Inicial',
         descripcion: 'Las preguntas de geografía del primer nivel',
         filtros: { materia: ['geografia'], nivel: ['inicial'] },
@@ -67,7 +75,11 @@
       },
       {
         id: 'astronomia',
-        titulo: 'Astronomía',
+        grupo: 'astronomia',
+        // Título distinto de la etiqueta del grupo a propósito: la prueba de humo
+        // compara el título de la tarjeta con el del examen lanzado, y si ambos
+        // coincidieran el chequeo pasaría incluso con los índices mal.
+        titulo: 'Sistema solar de cabo a rabo',
         descripcion: 'Todo el bloque de astronomía, sin temporizador',
         filtros: { materia: ['astronomia'] },
         n: 5,

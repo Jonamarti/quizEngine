@@ -253,3 +253,67 @@ test('imagen que no es un objeto falla', (t) => {
   assert.equal(r.codigo, 1);
   assert.match(r.salida, /debe ser un objeto/);
 });
+
+// ---- grupos de exámenes
+//
+// Los grupos ordenan el listado. Un preset que apunte a un grupo inexistente no
+// rompe la pantalla —cae en «Otros»— pero traiciona lo que quiso su autor.
+
+function conGrupos(t, mutar) {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'qz-tema-'));
+  t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
+  const TEMA = temaBase();
+  TEMA.grupos = [{ id: 'uno', etiqueta: 'Grupo uno' }, { id: 'dos', etiqueta: 'Grupo dos' }];
+  TEMA.presets = [
+    { id: 'p-uno', grupo: 'uno', titulo: 'A', filtros: {}, n: 2 },
+    { id: 'p-dos', grupo: 'dos', titulo: 'B', filtros: {}, n: 2 }
+  ];
+  mutar(TEMA);
+  return validar(escribirTema(dir, TEMA, bancoBase()));
+}
+
+test('un tema con grupos bien declarados pasa', (t) => {
+  const r = conGrupos(t, () => {});
+  assert.equal(r.codigo, 0, r.salida);
+});
+
+test('un preset con un grupo no declarado falla', (t) => {
+  const r = conGrupos(t, (TEMA) => { TEMA.presets[0].grupo = 'inventado'; });
+  assert.equal(r.codigo, 1);
+  assert.match(r.salida, /el grupo "inventado" no está declarado/);
+});
+
+test('un grupo sin id falla', (t) => {
+  const r = conGrupos(t, (TEMA) => { TEMA.grupos.push({ etiqueta: 'Sin id' }); });
+  assert.equal(r.codigo, 1);
+  assert.match(r.salida, /no tiene id/);
+});
+
+test('dos grupos con el mismo id fallan', (t) => {
+  const r = conGrupos(t, (TEMA) => { TEMA.grupos.push({ id: 'uno', etiqueta: 'Repe' }); });
+  assert.equal(r.codigo, 1);
+  assert.match(r.salida, /Grupo duplicado: "uno"/);
+});
+
+test('un preset sin grupo, habiendo grupos, es aviso y no error', (t) => {
+  const r = conGrupos(t, (TEMA) => { delete TEMA.presets[1].grupo; });
+  assert.equal(r.codigo, 0, r.salida);
+  assert.match(r.salida, /sin grupo/);
+});
+
+test('un grupo sin etiqueta es aviso', (t) => {
+  const r = conGrupos(t, (TEMA) => { delete TEMA.grupos[0].etiqueta; });
+  assert.equal(r.codigo, 0, r.salida);
+  assert.match(r.salida, /no tiene etiqueta/);
+});
+
+test('grupos que no es un array falla', (t) => {
+  const r = conGrupos(t, (TEMA) => { TEMA.grupos = 'geografia'; });
+  assert.equal(r.codigo, 1);
+  assert.match(r.salida, /debe ser un array/);
+});
+
+test('un tema sin grupos sigue siendo válido', (t) => {
+  const r = validarRoto(t, () => {});
+  assert.equal(r.codigo, 0, r.salida);
+});
