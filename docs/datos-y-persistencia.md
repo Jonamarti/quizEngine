@@ -26,6 +26,7 @@ el patrón de auto-registro mostrado allí para poder validarse desde Node.
 | --- | --- |
 | `id`, `titulo`, `prefijoAlmacen` | Obligatorios para el validador. El prefijo separa el almacenamiento entre temas. |
 | `subtitulo` | Texto opcional de cabecera. |
+| `aviso` | Texto opcional (plano, no HTML) bajo la cabecera; descargo legal para temas basados en un temario ajeno. |
 | `aprobado` | Fracción en `(0, 1]`; por defecto el motor usa `0.65`. |
 | `duraciones` | Lista de `{ valor, etiqueta, minutos }`; en ausencia se ofrece solo `sin`, con cero minutos. Conviene mantener ese identificador para el modo sin reloj. |
 | `tamanos` | Tamaños del generador; por defecto `[10, 20, 40]`, recortados a las preguntas disponibles. Se añade la opción de usar todas. |

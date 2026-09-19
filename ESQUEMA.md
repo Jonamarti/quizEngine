@@ -99,6 +99,7 @@ window.TEMA = {
   aprobado: 0.7,                       // fracción para aprobar
   idioma: 'es',                        // opcional: atributo lang del documento
   locale: 'es-ES',                     // opcional: formato de fecha de Intl
+  aviso: 'Material independiente...',  // opcional: aviso legal bajo la cabecera
   duraciones: [
     { valor: 'sin', etiqueta: 'Sin temporizador', minutos: 0 },
     { valor: '20',  etiqueta: '20 minutos',       minutos: 20 }
@@ -112,6 +113,10 @@ window.TEMA = {
 `prefijoAlmacen` tiene que ser único por aplicación: si dos temas se publican bajo el mismo
 origen, por ejemplo dos rutas del mismo GitHub Pages, comparten `localStorage` y sin
 prefijo distinto se pisan el progreso.
+
+`aviso` se pinta como texto plano (no HTML) bajo la cabecera cuando el tema lo declara;
+pensado para el descargo de marca que exige cualquier temario basado en un programa de
+estudio ajeno (por ejemplo, «no afiliado ni acreditado por ISTQB®»).
 
 ## Faceta
 

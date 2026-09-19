@@ -15,6 +15,7 @@
     id: 'ejemplo',
     titulo: 'Tema de ejemplo',
     subtitulo: 'Banco mínimo para probar el contrato del motor',
+    aviso: 'Contenido de demostración, no afiliado a ninguna entidad real.',
     prefijoAlmacen: 'ejemplo_v1_',
     aprobado: 0.6,
 

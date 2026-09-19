@@ -87,6 +87,9 @@ function validarTema(TEMA) {
   if (TEMA.aprobado != null && (typeof TEMA.aprobado !== 'number' || TEMA.aprobado <= 0 || TEMA.aprobado > 1)) {
     err('TEMA.aprobado debe ser una fracción entre 0 y 1');
   }
+  if (TEMA.aviso !== undefined && (typeof TEMA.aviso !== 'string' || !TEMA.aviso.trim())) {
+    err('TEMA.aviso, si se declara, debe ser texto no vacío');
+  }
   if (!Array.isArray(TEMA.facetas) || !TEMA.facetas.length) {
     err('TEMA.facetas debe ser un array con al menos una faceta');
   }

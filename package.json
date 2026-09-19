@@ -1,6 +1,6 @@
 {
   "name": "quiz-engine",
-  "version": "1.3.0",
+  "version": "1.4.0",
   "private": true,
   "description": "Motor de examenes tipo test, agnostico del tema. Sin dependencias ni build.",
   "license": "MIT",

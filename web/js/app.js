@@ -257,6 +257,11 @@
     if (h1) h1.textContent = TEMA.titulo || 'Quiz';
     var sub = ui.$('#cabecera-sub');
     if (sub) sub.textContent = TEMA.subtitulo || '';
+    var aviso = ui.$('#aviso');
+    if (aviso) {
+      if (TEMA.aviso) { aviso.textContent = TEMA.aviso; aviso.hidden = false; }
+      else aviso.hidden = true;
+    }
 
     if (!preguntas.length) {
       ui.$('#lista-examenes').innerHTML = '<p class="aviso">' + esc(t('sinPreguntas')) + '</p>';

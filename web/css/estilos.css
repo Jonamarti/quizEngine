@@ -53,6 +53,19 @@ body {
 .cabecera h1 { margin: 0; font-size: 1.35rem; }
 .cabecera p { margin: 4px 0 0; opacity: .85; font-size: .9rem; }
 
+.disclaimer {
+  max-width: 1000px;
+  margin: 12px auto 0;
+  padding: 10px 16px;
+  background: var(--ambar-fondo);
+  border: 1px solid var(--ambar);
+  border-radius: var(--radio);
+  color: var(--texto);
+  font-size: .85rem;
+  line-height: 1.4;
+}
+.disclaimer[hidden] { display: none; }
+
 #app { max-width: 1000px; margin: 0 auto; padding: 20px 16px 64px; }
 
 .vista { display: none; }

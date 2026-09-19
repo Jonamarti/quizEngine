@@ -2,8 +2,7 @@
 
 Revisión del 19 de septiembre de 2026 sobre la versión `1.3.0` de
 [package.json](../package.json), con base en el commit `5336241`. Describe el
-código local y las comprobaciones realizadas; no acredita el estado de una
-publicación remota.
+código local y las comprobaciones realizadas.
 
 | Documento | Contenido |
 | --- | --- |

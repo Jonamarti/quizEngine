@@ -12,7 +12,7 @@ doble clic, sin servidor.
 El motor se consume como dependencia, no se copia:
 
 ```bash
-npm install github:Jonamarti/quizEngine#v1.3.0
+npm install github:Jonamarti/quizEngine#v1.4.0
 ```
 
 Eso deja tres comandos disponibles:

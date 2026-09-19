@@ -37,6 +37,7 @@ function comprobar(nombre, ok, extra) {
   const tema = await pag.evaluate(() => ({
     id: window.TEMA.id,
     titulo: window.TEMA.titulo,
+    aviso: window.TEMA.aviso || null,
     prefijo: window.TEMA.prefijoAlmacen,
     presets: (window.TEMA.presets || []).length,
     preguntas: window.PREGUNTAS.length,
@@ -52,6 +53,13 @@ function comprobar(nombre, ok, extra) {
   comprobar('sin errores de JS al cargar', erroresJs.length === 0, erroresJs.join(' | '));
   comprobar('el título del tema llega a la cabecera',
     (await pag.textContent('#cabecera-titulo')) === tema.titulo, tema.titulo);
+  if (tema.aviso) {
+    comprobar('el aviso del tema se muestra bajo la cabecera',
+      (await pag.textContent('#aviso')) === tema.aviso && await pag.isVisible('#aviso'));
+  } else {
+    console.log('  (el tema no declara aviso: me salto esa parte)');
+    comprobar('sin aviso declarado, el hueco queda oculto', !(await pag.isVisible('#aviso')));
+  }
   comprobar('se pinta una tarjeta por preset',
     (await pag.locator('#lista-examenes .tarjeta').count()) === tema.presets);
   comprobar('el contador del banco cuadra con lo cargado',
