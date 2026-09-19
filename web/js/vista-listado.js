@@ -15,7 +15,9 @@
   var grupoActivo = '';
 
   function tarjetaPreset(preset, api, idx) {
-    var disponibles = QZ.banco.filtrar(preset.filtros).length;
+    var disponibles = preset.ids
+      ? preset.ids.filter(function (id) { return QZ.banco.porId(id); }).length
+      : QZ.banco.filtrar(preset.filtros).length;
     var n = Math.min(preset.n || disponibles, disponibles);
     var minimo = Math.ceil(n * api.aprobado());
 
@@ -24,7 +26,7 @@
       return '<option value="' + esc(d.valor) + '"' + sel + '>' + esc(d.etiqueta) + '</option>';
     }).join('');
 
-    var historial = QZ.almacen.historial().filter(function (h) {
+    var historial = api.historial.filter(function (h) {
       return h.presetId === preset.id;
     });
     var ultimo = historial[0];
@@ -132,8 +134,9 @@
     }).join('');
 
     return '<h2 class="titulo-seccion">' + esc(t('historialTitulo')) + '</h2>' +
-      '<div class="tabla-envoltorio"><table><thead><tr><th>Fecha</th><th>Examen</th>' +
-      '<th>Aciertos</th><th>%</th></tr></thead><tbody>' + filas + '</tbody></table></div>' +
+      '<div class="tabla-envoltorio"><table><thead><tr><th>' + esc(t('fecha')) + '</th><th>' +
+      esc(t('examen')) + '</th><th>' + esc(t('aciertos')) + '</th><th>%</th></tr></thead><tbody>' +
+      filas + '</tbody></table></div>' +
       '<div class="acciones"><button class="btn" id="btn-borrar-historial">' +
       esc(t('historialBorrar')) + '</button></div>';
   }
@@ -143,6 +146,7 @@
       var cont = ui.$('#lista-examenes');
       var presets = (api.tema.presets || []);
       var total = QZ.banco.todas().length;
+      api.historial = QZ.almacen.historial();
       var secs = secciones(api);
 
       // Si el grupo activo ya no existe, se vuelve a «Todos» en vez de dejar la
@@ -198,7 +202,9 @@
             titulo: preset.titulo,
             filtros: preset.filtros,
             n: preset.n,
+            ids: preset.ids,
             presetId: preset.id,
+            barajarPreguntas: preset.barajarPreguntas !== false,
             barajarOpciones: preset.barajarOpciones !== false
           }, modo);
         });

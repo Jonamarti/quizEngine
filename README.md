@@ -12,7 +12,7 @@ doble clic, sin servidor.
 El motor se consume como dependencia, no se copia:
 
 ```bash
-npm install github:Jonamarti/quizEngine#v1.0.0
+npm install github:Jonamarti/quizEngine#v1.3.0
 ```
 
 Eso deja tres comandos disponibles:
@@ -45,49 +45,30 @@ como los leen el validador y los tests.
 preset, y las reglas que impone el validador. `pruebas/tema-ejemplo/` es ese contrato
 funcionando, y sirve a la vez de fixture de los tests y de demo.
 
-## Desarrollo
+## Documentación técnica
+
+`docs/` contiene la referencia del motor, escrita para quien lo modifica:
+
+| Documento | Contenido |
+| --- | --- |
+| [Arquitectura](docs/arquitectura.md) | Módulos, orden de carga, flujos y decisiones de diseño. |
+| [Datos y persistencia](docs/datos-y-persistencia.md) | Cómo consume el motor el contrato y qué guarda en `localStorage`. |
+| [Desarrollo](docs/desarrollo.md) | Preparación, comandos, los tres CLI, CI, publicación y contenido del paquete. |
+| [Pruebas](docs/pruebas.md) | Qué cubre cada capa de pruebas y qué no. |
+| [Deuda técnica](docs/deuda-tecnica.md) | Registro de hallazgos y cierres de la 1.3.0. |
+
+Para trabajar sobre el motor:
 
 ```bash
 npm ci
-npm test                       # 71 pruebas de unidad, sin navegador
+npm test                       # pruebas de unidad, sin navegador
 npx playwright install chromium
 npm run test:e2e               # construye el tema de ejemplo y le pasa la prueba de humo
-npm run demo                   # sólo construir la demo, en salida-pruebas/
+npm run benchmark              # referencia con un banco sintético de 10.000 preguntas
 ```
 
-Los tests de unidad cargan los módulos del motor en un global falso (`pruebas/cargar.js`),
-así que se prueban `banco.js` y `examen.js` tal cual los ejecuta el navegador, sin
-duplicar la lógica. `validar.js` y `construir.js` se prueban como los CLI que son:
-lanzándolos y mirando el código de salida.
-
-## Publicar una versión
-
-Los repos de datos apuntan a un tag, así que una versión nueva es un tag nuevo:
-
-```bash
-npm version minor -m "v%s"     # actualiza package.json y crea el tag
-git push quizEngine master --follow-tags
-```
-
-El workflow de release vuelve a pasar los tests, empaqueta con `npm pack` y adjunta el
-`.tgz` a la Release de GitHub. Para adoptarla, el repo de datos cambia la referencia del
-tag en su `package.json` y vuelve a instalar.
-
-## Estructura
-
-```
-web/            el motor: index.html es una plantilla con el marcador DATOS_DEL_TEMA
-  js/           módulos que se cuelgan de window.QZ, en orden de carga
-  css/
-scripts/
-  validar.js    valida un tema contra ESQUEMA.md y saca cobertura cruzada
-  construir.js  une motor + tema y escribe el sitio
-pruebas/
-  cargar.js     carga los módulos del motor desde Node
-  humo.js       prueba de humo end-to-end con Playwright
-  unidad/       node:test, sin dependencias
-  tema-ejemplo/ fixture y demo
-```
+Los demás scripts, la integración continua, cómo publicar una versión y la
+estructura del repositorio están en [docs/desarrollo.md](docs/desarrollo.md).
 
 ## Licencia
 

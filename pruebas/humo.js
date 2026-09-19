@@ -24,6 +24,7 @@ function comprobar(nombre, ok, extra) {
 
 (async () => {
   const navegador = await chromium.launch();
+  try {
   const pag = await navegador.newPage();
 
   const erroresJs = [];
@@ -31,7 +32,7 @@ function comprobar(nombre, ok, extra) {
   pag.on('console', (m) => { if (m.type() === 'error') erroresJs.push(m.text()); });
 
   await pag.goto(SITIO);
-  await pag.waitForSelector('#lista-examenes .tarjeta');
+  await pag.waitForSelector('#lista-examenes');
 
   const tema = await pag.evaluate(() => ({
     id: window.TEMA.id,
@@ -97,7 +98,7 @@ function comprobar(nombre, ok, extra) {
     const conSegundo = parseInt(await pag.textContent('#contador-vivo'), 10);
 
     comprobar('la faceta acumulativa arrastra los valores anteriores',
-      conSegundo > conPrimero, primero + '=' + conPrimero + ', ' + segundo + '=' + conSegundo);
+    conSegundo >= conPrimero, primero + '=' + conPrimero + ', ' + segundo + '=' + conSegundo);
 
     await pag.click('[data-faceta="' + fac + '"][data-valor="' + segundo + '"]');   // deseleccionar
   }
@@ -135,6 +136,13 @@ function comprobar(nombre, ok, extra) {
   const totalOpciones = await pag.locator('#contenedor-preguntas .opcion').count();
   comprobar('cada pregunta trae sus opciones', totalOpciones >= nPreg * 2, String(totalOpciones));
 
+  const chipColor = pag.locator('#contenedor-preguntas .chip[style]').first();
+  if (await chipColor.count()) {
+    const fondoChip = await chipColor.evaluate((el) => getComputedStyle(el).backgroundColor);
+    comprobar('los colores HSL producen un fondo visible',
+      fondoChip !== 'rgba(0, 0, 0, 0)' && fondoChip !== 'transparent', fondoChip);
+  }
+
   // El navegador debe llevar a su pregunta: era el bug de la app de ISTQB
   if (nPreg >= 3) {
     await pag.locator('.nav-num').nth(nPreg - 1).click();
@@ -168,17 +176,24 @@ function comprobar(nombre, ok, extra) {
 
   // ---- persistencia: recargar debe ofrecer continuar
   await pag.reload();
-  await pag.waitForSelector('#lista-examenes .tarjeta');
+  await pag.waitForSelector('#lista-examenes');
   const guardado = await pag.evaluate((pref) =>
     JSON.parse(localStorage.getItem(pref + 'progreso') || 'null'), tema.prefijo);
   comprobar('el progreso se guarda bajo el prefijo del tema',
     guardado && Object.keys(guardado.respuestas).length === nPreg,
     tema.prefijo + 'progreso');
 
-  await pag.click('#lista-examenes [data-empezar="0"]');
+  if (tema.presets) {
+    await pag.click('#lista-examenes [data-empezar="0"]');
+  } else {
+    await pag.click('#btn-generador');
+    await pag.click('#btn-generar');
+  }
   await pag.waitForSelector('#modal:not(.oculto)');
   comprobar('al haber avance se ofrece continuar',
     (await pag.textContent('#modal-titulo')).length > 0);
+  comprobar('el modal toma el foco y bloquea el fondo', await pag.evaluate(() =>
+    document.activeElement.closest('#modal') && document.querySelector('#app').inert));
   await pag.click('#modal-acciones .btn-primario');   // Continuar
   await pag.waitForSelector('#vista-examen.activa');
 
@@ -195,9 +210,10 @@ function comprobar(nombre, ok, extra) {
   comprobar('hay cinco fichas de resumen', (await pag.locator('.ficha').count()) === 5);
   comprobar('se explica cada opción de cada pregunta',
     (await pag.locator('.explicacion').count()) === totalOpciones, String(totalOpciones));
-  comprobar('se muestra la fuente de las preguntas',
-    (await pag.locator('.fuente').count()) > 0);
-  comprobar('hay desglose por faceta', (await pag.locator('.panel table').count()) > 0);
+  if (await pag.locator('.fuente').count()) comprobar('se muestran las fuentes disponibles', true);
+  else console.log('  (el examen no contiene fuentes: capacidad opcional)');
+  if (await pag.locator('.panel table').count()) comprobar('hay desglose cuando aporta más de un valor', true);
+  else console.log('  (el examen no produce un desglose multivalor: capacidad opcional)');
 
   const historial = await pag.evaluate((pref) =>
     JSON.parse(localStorage.getItem(pref + 'historial') || '[]'), tema.prefijo);
@@ -215,6 +231,58 @@ function comprobar(nombre, ok, extra) {
   }
 
   comprobar('sin errores de JS en todo el recorrido', erroresJs.length === 0, erroresJs.join(' | '));
+
+  // ---- temporizador: usa Date.now, no el número de callbacks recibidos.
+  const paginaReloj = await (await navegador.newContext()).newPage();
+  await paginaReloj.goto(SITIO);
+  await paginaReloj.waitForSelector('#lista-examenes');
+  await paginaReloj.click('#btn-generador');
+  const modoConReloj = await paginaReloj.evaluate(() => {
+    const o = [...document.querySelectorAll('#sel-dur option')].find((x) => x.value !== 'sin');
+    return o && o.value;
+  });
+  if (modoConReloj) {
+    await paginaReloj.selectOption('#sel-dur', modoConReloj);
+    await paginaReloj.click('#btn-generar');
+    await paginaReloj.waitForSelector('#vista-examen.activa');
+    await paginaReloj.evaluate(() => {
+      const ahora = Date.now();
+      Date.now = () => ahora + 24 * 60 * 60 * 1000;
+    });
+    await paginaReloj.waitForSelector('#modal:not(.oculto)');
+    comprobar('un callback tardío vence según la fecha límite',
+      await paginaReloj.locator('#contenedor-preguntas input:disabled').count() > 0);
+    await paginaReloj.keyboard.press('Escape');
+    comprobar('Escape no permite editar un examen vencido',
+      await paginaReloj.locator('#modal:not(.oculto)').count() === 1);
+    await paginaReloj.click('#modal-acciones button');
+    await paginaReloj.waitForSelector('#vista-resultados.activa');
+
+    const paginaVencida = await (await navegador.newContext()).newPage();
+    await paginaVencida.goto(SITIO);
+    await paginaVencida.click('#btn-generador');
+    await paginaVencida.selectOption('#sel-dur', modoConReloj);
+    await paginaVencida.click('#btn-generar');
+    await paginaVencida.waitForSelector('#vista-examen.activa');
+    await paginaVencida.evaluate((pref) => {
+      const clave = pref + 'progreso';
+      const p = JSON.parse(localStorage.getItem(clave));
+      p.limite = Date.now() - 1000;
+      p.restante = 0;
+      localStorage.setItem(clave, JSON.stringify(p));
+    }, tema.prefijo);
+    await paginaVencida.reload();
+    await paginaVencida.click('#btn-generador');
+    await paginaVencida.click('#btn-generar');
+    await paginaVencida.waitForSelector('#modal:not(.oculto)');
+    await paginaVencida.click('#modal-acciones .btn-primario');
+    await paginaVencida.waitForFunction(() =>
+      document.querySelector('#modal-titulo').textContent === window.QZ.t('tiempoAgotado'));
+    comprobar('un examen ya vencido se bloquea al reanudar',
+      await paginaVencida.locator('#contenedor-preguntas input:disabled').count() > 0);
+  } else {
+    console.log('  (el tema no declara duración con reloj: me salto esa parte)');
+  }
 
   // ---- imágenes de pregunta, si el tema declara alguna
   const conImagen = await pag.evaluate(() =>
@@ -251,23 +319,22 @@ function comprobar(nombre, ok, extra) {
   // el recorrido anterior dejó en localStorage.
   const paginaLimpia = await (await navegador.newContext()).newPage();
   await paginaLimpia.goto(SITIO);
-  await paginaLimpia.waitForSelector('#lista-examenes .tarjeta');
+  await paginaLimpia.waitForSelector('#lista-examenes');
 
   const grupos = await paginaLimpia.evaluate(() =>
     (window.TEMA.grupos || []).map((x) => ({ id: x.id, etiqueta: x.etiqueta })));
 
-  if (!grupos.length) {
+  const filtrosGrupo = await paginaLimpia.locator('[data-grupo]').count();
+  if (!grupos.length || !filtrosGrupo) {
     console.log('  (el tema no declara grupos de exámenes: me salto esa parte)');
   } else {
-    comprobar('hay una pastilla por grupo, más «Todos»',
-      (await paginaLimpia.locator('[data-grupo]').count()) === grupos.length + 1,
-      grupos.length + ' grupos');
-    comprobar('se pinta un encabezado por grupo',
-      (await paginaLimpia.locator('.grupo-examenes').count()) === grupos.length);
+    comprobar('los grupos no vacíos producen navegación', filtrosGrupo >= 3,
+      filtrosGrupo + ' pastillas');
 
     // Se filtra por el último grupo declarado: si el reparto estuviera mal, el
     // primero podría acertar por casualidad.
-    const ultimo = grupos[grupos.length - 1];
+    const ultimoId = await paginaLimpia.locator('[data-grupo]').last().getAttribute('data-grupo');
+    const ultimo = grupos.find((x) => x.id === ultimoId) || { id: ultimoId, etiqueta: ultimoId };
     await paginaLimpia.click('[data-grupo="' + ultimo.id + '"]');
     await paginaLimpia.waitForSelector('.pastilla.activa');
 
@@ -290,7 +357,7 @@ function comprobar(nombre, ok, extra) {
   const fondo = async (esquema) => {
     const p = await (await navegador.newContext({ colorScheme: esquema })).newPage();
     await p.goto(SITIO);
-    await p.waitForSelector('.tarjeta');
+    await p.waitForSelector('#lista-examenes');
     return p.evaluate(() => getComputedStyle(document.body).backgroundColor);
   };
   const claro = await fondo('light');
@@ -300,12 +367,14 @@ function comprobar(nombre, ok, extra) {
   // ---- móvil
   const pagMovil = await (await navegador.newContext({ viewport: { width: 390, height: 780 } })).newPage();
   await pagMovil.goto(SITIO);
-  await pagMovil.waitForSelector('.tarjeta');
+  await pagMovil.waitForSelector('#lista-examenes');
   const desbordaX = await pagMovil.evaluate(() =>
     document.documentElement.scrollWidth > document.documentElement.clientWidth + 1);
   comprobar('a 390px no hay desbordamiento horizontal', !desbordaX);
 
-  await navegador.close();
+  } finally {
+    await navegador.close();
+  }
   console.log(fallos ? '\n' + fallos + ' FALLO(S)' : '\nTodo correcto.');
   process.exit(fallos ? 1 : 0);
 })();

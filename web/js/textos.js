@@ -25,6 +25,8 @@
     limpiarFiltros: 'Limpiar filtros',
     sinResultados: 'Ningún filtro deja preguntas. Prueba a quitar alguno.',
     cualquiera: 'Cualquiera',
+    acumulativo: 'acumulativo',
+    repaso: 'Repaso',
 
     preguntas: 'preguntas',
     aprobadoCon: 'aprobado',
@@ -39,6 +41,10 @@
     continuar: 'Continuar',
     empezarDeNuevo: 'Empezar de nuevo',
     cancelar: 'Cancelar',
+    aceptar: 'Aceptar',
+    avanceIncompatible: 'El avance ya no es compatible',
+    avanceIncompatibleMsg: 'El banco o sus opciones han cambiado. Se ha descartado el avance para evitar corregir respuestas con datos distintos.',
+    errorGuardado: 'No se pudo guardar el avance en este navegador.',
 
     seCorrigeAlFinalizar: 'las respuestas se corrigen al pulsar Finalizar',
     respondidas: 'respondidas',
@@ -82,7 +88,10 @@
 
     historialTitulo: 'Tus últimos intentos',
     historialVacio: 'Todavía no has terminado ningún examen.',
-    historialBorrar: 'Borrar historial'
+    historialBorrar: 'Borrar historial',
+    fecha: 'Fecha',
+    examen: 'Examen',
+    aciertos: 'Aciertos'
   };
 
   g.QZ.t = function (clave, sust) {

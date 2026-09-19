@@ -37,7 +37,7 @@
       var activo = seleccion.indexOf(v.id) !== -1;
       var clases = 'pastilla' + (activo ? ' activa' : '') + (n === 0 ? ' vacia' : '');
       var estilo = v.color && activo
-        ? ' style="background:' + esc(v.color) + '33;border-color:' + esc(v.color) + '"'
+        ? ' style="background:color-mix(in srgb, ' + esc(v.color) + ' 20%, transparent);border-color:' + esc(v.color) + '"'
         : '';
       return '<button type="button" class="' + clases + '"' + estilo +
         ' data-faceta="' + esc(def.id) + '" data-valor="' + esc(v.id) + '"' +
@@ -47,7 +47,7 @@
 
     return '<div class="grupo-filtro">' +
       '<div class="grupo-titulo">' + esc(def.etiqueta || def.id) +
-        (def.acumulativa ? ' <span class="pista">(acumulativo)</span>' : '') + '</div>' +
+        (def.acumulativa ? ' <span class="pista">(' + esc(t('acumulativo')) + ')</span>' : '') + '</div>' +
       '<div class="pastillas">' + botones + '</div>' +
       '</div>';
   }
@@ -79,7 +79,7 @@
       '</div>' +
       facetas +
       '<div class="grupo-filtro">' +
-        '<div class="grupo-titulo">Repaso</div>' +
+        '<div class="grupo-titulo">' + esc(t('repaso')) + '</div>' +
         '<div class="pastillas">' +
           '<button type="button" class="pastilla' + (modoRepaso === 'falladas' ? ' activa' : '') +
             '" data-repaso="falladas">' + esc(t('soloFalladas')) + '</button>' +
@@ -164,10 +164,14 @@
   // Al deseleccionar una faceta de la que dependen otras, sus filtros quedarían
   // colgados y seguirían recortando el banco desde una pantalla que ya no se ve.
   function podarDependientes() {
-    var visibles = QZ.banco.aplicables(criterios).map(function (f) { return f.id; });
-    Object.keys(criterios).forEach(function (k) {
-      if (visibles.indexOf(k) === -1) delete criterios[k];
-    });
+    var cambio = true;
+    while (cambio) {
+      cambio = false;
+      var visibles = QZ.banco.aplicables(criterios).map(function (f) { return f.id; });
+      Object.keys(criterios).forEach(function (k) {
+        if (visibles.indexOf(k) === -1) { delete criterios[k]; cambio = true; }
+      });
+    }
   }
 
   QZ.vistaGenerador = {

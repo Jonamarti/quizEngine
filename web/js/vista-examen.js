@@ -9,7 +9,7 @@
   var refCb = null;
 
   function idDom(pid) {
-    return 'p-' + String(pid).replace(/[^A-Za-z0-9_-]/g, '_');
+    return 'p-' + encodeURIComponent(String(pid)).replace(/\./g, '%2E');
   }
 
   function renderBarra(estado, cb) {
@@ -22,6 +22,7 @@
       '</div>' +
       (conCrono ? '<div class="temporizador" id="temporizador">--:--</div>' : '') +
       '<div class="progreso-respuestas" id="progreso-respuestas"></div>' +
+      '<div class="aviso-inline" id="aviso-guardado" role="status"></div>' +
       '<div class="acciones">' +
         '<button class="btn btn-primario" id="btn-finalizar">' + esc(t('finalizar')) + '</button>' +
         '<button class="btn" id="btn-reiniciar">' + esc(t('reiniciar')) + '</button>' +
@@ -199,6 +200,17 @@
       if (!el) return;
       el.textContent = ui.tiempo(seg);
       el.classList.toggle('urgente', seg <= 60);
+    },
+
+    bloquear: function () {
+      document.querySelectorAll('#vista-examen input, #btn-reiniciar').forEach(function (el) {
+        el.disabled = true;
+      });
+    },
+
+    avisarGuardado: function (mensaje) {
+      var el = ui.$('#aviso-guardado');
+      if (el) el.textContent = mensaje || '';
     }
   };
 })(typeof window !== 'undefined' ? window : globalThis);

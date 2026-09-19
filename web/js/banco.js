@@ -6,7 +6,7 @@
 
   var preguntas = [];
   var facetas = [];
-  var porId = {};
+  var porId = Object.create(null);
 
   function defFaceta(id) {
     for (var i = 0; i < facetas.length; i++) {
@@ -51,7 +51,7 @@
     init: function (lista, tema) {
       preguntas = lista || [];
       facetas = (tema && tema.facetas) || [];
-      porId = {};
+      porId = Object.create(null);
       preguntas.forEach(function (p) { porId[p.id] = p; });
     },
 
@@ -61,8 +61,9 @@
     defFaceta: defFaceta,
 
     filtrar: function (criterios, idsPermitidos) {
+      var permitidos = idsPermitidos ? new Set(idsPermitidos) : null;
       return preguntas.filter(function (p) {
-        if (idsPermitidos && idsPermitidos.indexOf(p.id) === -1) return false;
+        if (permitidos && !permitidos.has(p.id)) return false;
         return cumple(p, criterios);
       });
     },
@@ -74,7 +75,18 @@
         if (k !== facetaId) otros[k] = criterios[k];
       });
       var base = this.filtrar(otros, idsPermitidos);
-      var cuenta = {};
+      var cuenta = Object.create(null);
+      var def = defFaceta(facetaId);
+
+      if (def && def.acumulativa && def.valores) {
+        def.valores.forEach(function (valor) {
+          var prueba = {};
+          Object.keys(otros).forEach(function (k) { prueba[k] = otros[k]; });
+          prueba[facetaId] = [valor.id];
+          cuenta[valor.id] = g.QZ.banco.filtrar(prueba, idsPermitidos).length;
+        });
+        return cuenta;
+      }
       base.forEach(function (p) {
         var v = p.facetas && p.facetas[facetaId];
         if (v === undefined) return;

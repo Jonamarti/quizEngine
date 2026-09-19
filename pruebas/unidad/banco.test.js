@@ -78,12 +78,20 @@ test('idsPermitidos recorta el resultado', () => {
 test('disponibles cuenta por valor ignorando el criterio de su propio eje', () => {
   const banco = nuevo();
   const cuenta = banco.disponibles('continente', { materia: ['geografia'] });
-  assert.deepEqual(cuenta, { europa: 7, america: 3 });
+  assert.deepEqual({ ...cuenta }, { europa: 7, america: 3 });
 
   // El criterio sobre la propia faceta no debe estrechar su recuento: si no, al
   // seleccionar un valor los demás se quedarían a cero y no se podrían añadir.
   const conSeleccion = banco.disponibles('continente', { materia: ['geografia'], continente: ['europa'] });
   assert.deepEqual(conSeleccion, cuenta);
+});
+
+test('disponibles respeta la expansión de una faceta acumulativa', () => {
+  const banco = nuevo();
+  const cuenta = banco.disponibles('nivel', {});
+  assert.equal(cuenta.inicial, 7);
+  assert.equal(cuenta.medio, 13);
+  assert.equal(cuenta.avanzado, 15);
 });
 
 test('aplicables oculta una faceta mientras su dependencia no se cumpla', () => {

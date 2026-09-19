@@ -6,7 +6,7 @@
   var ui = QZ.ui, t = QZ.t, esc = QZ.ui.esc;
 
   var TEMA = g.TEMA || {};
-  var estado = null;        // { examen, respuestas, modo, restante, epoch }
+  var estado = null;        // { examen, respuestas, modo, restante, limite, vencido }
   var cronoId = null;
 
   function aprobado() { return TEMA.aprobado || 0.65; }
@@ -24,18 +24,41 @@
 
   function guardar() {
     if (!estado) return;
-    QZ.almacen.guardarProgreso({
+    var firmas = Object.create(null);
+    estado.examen.items.forEach(function (i) {
+      firmas[i.pregunta.id] = QZ.examen.firmaPregunta(i.pregunta);
+    });
+    var ok = QZ.almacen.guardarProgreso({
       titulo: estado.examen.titulo,
       filtros: estado.examen.filtros,
       semilla: estado.examen.semilla,
       barajarOpciones: estado.examen.barajarOpciones,
+      barajarPreguntas: estado.examen.barajarPreguntas,
+      idsFuente: estado.examen.idsFuente,
+      idsPermitidos: estado.examen.idsPermitidos,
       presetId: estado.examen.presetId,
       ids: estado.examen.items.map(function (i) { return i.pregunta.id; }),
+      firmas: firmas,
       respuestas: estado.respuestas,
       modo: estado.modo,
       restante: estado.restante,
+      limite: estado.limite,
       epoch: Date.now()
     });
+    QZ.vistaExamen.avisarGuardado(!ok ? t('errorGuardado') : '');
+  }
+
+  function opcionesDe(examen) {
+    return {
+      titulo: examen.titulo,
+      filtros: examen.filtros,
+      n: examen.items.length,
+      ids: examen.idsFuente,
+      idsPermitidos: examen.idsPermitidos,
+      barajarPreguntas: examen.barajarPreguntas,
+      barajarOpciones: examen.barajarOpciones,
+      presetId: examen.presetId
+    };
   }
 
   // -------------------------------------------------- examen
@@ -48,13 +71,14 @@
       respuestas: (guardado && guardado.respuestas) || {},
       modo: d.valor,
       restante: d.minutos > 0 ? d.minutos * 60 : 0,
-      epoch: Date.now()
+      limite: d.minutos > 0 ? Date.now() + d.minutos * 60000 : null,
+      vencido: false
     };
-    // Al continuar se descuenta lo transcurrido, pero solo si el temporizador
-    // elegido coincide con aquel con el que se guardó.
     if (guardado && guardado.modo === d.valor && d.minutos > 0 && guardado.restante != null) {
-      var pasado = Math.floor((Date.now() - guardado.epoch) / 1000);
-      estado.restante = Math.max(0, guardado.restante - pasado);
+      estado.limite = Number.isFinite(guardado.limite)
+        ? guardado.limite
+        : guardado.epoch + guardado.restante * 1000;
+      estado.restante = Math.max(0, Math.ceil((estado.limite - Date.now()) / 1000));
     }
 
     ui.vista('examen');
@@ -64,23 +88,18 @@
       onReiniciar: reiniciar,
       onSalir: salir
     });
-    arrancarCrono();
     guardar();
+    arrancarCrono();
   }
 
   function reiniciar() {
-    var nuevo = QZ.examen.construir({
-      titulo: estado.examen.titulo,
-      filtros: estado.examen.filtros,
-      n: estado.examen.items.length,
-      barajarOpciones: estado.examen.barajarOpciones,
-      presetId: estado.examen.presetId
-    });
+    var nuevo = QZ.examen.construir(opcionesDe(estado.examen));
     QZ.almacen.borrarProgreso();
     iniciar(nuevo, estado.modo, null);
   }
 
   function confirmarFinalizar() {
+    if (estado.vencido) return finalizar();
     var faltan = estado.examen.items.filter(function (i) {
       return !QZ.examen.respondida(i, estado.respuestas);
     }).length;
@@ -116,13 +135,7 @@
     QZ.vistaResultados.render(examen, resultados, {
       aprobado: aprobado(),
       onReintentar: function () {
-        iniciar(QZ.examen.construir({
-          titulo: examen.titulo,
-          filtros: examen.filtros,
-          n: examen.items.length,
-          barajarOpciones: examen.barajarOpciones,
-          presetId: examen.presetId
-        }), modo, null);
+        iniciar(QZ.examen.construir(opcionesDe(examen)), modo, null);
       },
       onRepasarFalladas: function () {
         var ids = resultados.filter(function (r) { return !r.correcta; })
@@ -153,21 +166,24 @@
   function arrancarCrono() {
     detenerCrono();
     if (estado.modo === 'sin') return;
-    QZ.vistaExamen.pintarTiempo(estado.restante);
-    cronoId = setInterval(function () {
-      estado.restante--;
+    function actualizar() {
+      estado.restante = Math.max(0, Math.ceil((estado.limite - Date.now()) / 1000));
       QZ.vistaExamen.pintarTiempo(estado.restante);
-      guardar();
       if (estado.restante <= 0) {
         detenerCrono();
+        estado.vencido = true;
+        QZ.vistaExamen.bloquear();
+        guardar();
         ui.modal(t('tiempoAgotado'), t('tiempoAgotadoMsg'), [
           {
             texto: t('finalizarExamen'), clase: 'btn-primario',
-            onClick: function () { ui.cerrarModal(); finalizar(); }
+            onClick: function () { ui.cerrarModal(true); finalizar(); }
           }
-        ]);
+        ], { cerrable: false });
       }
-    }, 1000);
+    }
+    actualizar();
+    if (!estado.vencido) cronoId = setInterval(actualizar, 250);
   }
 
   function detenerCrono() {
@@ -183,8 +199,7 @@
 
     lanzar: function (opciones, modo) {
       var guardado = QZ.almacen.leerProgreso();
-      var hayAvance = guardado && guardado.respuestas &&
-        Object.keys(guardado.respuestas).length > 0;
+      var hayAvance = !!guardado;
 
       if (!hayAvance) {
         iniciar(QZ.examen.construir(opciones), modo, null);
@@ -197,7 +212,15 @@
           texto: t('continuar'), clase: 'btn-primario',
           onClick: function () {
             ui.cerrarModal();
-            iniciar(QZ.examen.rehidratar(guardado), guardado.modo, guardado);
+            var recuperado = QZ.examen.rehidratar(guardado);
+            if (!recuperado) {
+              QZ.almacen.borrarProgreso();
+              ui.modal(t('avanceIncompatible'), t('avanceIncompatibleMsg'), [
+                { texto: t('aceptar'), clase: 'btn-primario', onClick: ui.cerrarModal }
+              ]);
+              return;
+            }
+            iniciar(recuperado, guardado.modo, guardado);
           }
         },
         {
@@ -229,6 +252,7 @@
     var preguntas = g.PREGUNTAS || [];
 
     document.title = TEMA.titulo || 'Quiz';
+    if (TEMA.idioma) document.documentElement.lang = TEMA.idioma;
     var h1 = ui.$('#cabecera-titulo');
     if (h1) h1.textContent = TEMA.titulo || 'Quiz';
     var sub = ui.$('#cabecera-sub');

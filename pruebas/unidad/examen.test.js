@@ -60,13 +60,34 @@ test('rehidratar reconstruye el examen exacto, opciones incluidas', () => {
   assert.deepEqual(vuelto.items.map((i) => i.orden), original.items.map((i) => i.orden));
 });
 
-test('rehidratar descarta en silencio una pregunta que ya no existe', () => {
+test('rehidratar rechaza completo un avance con una pregunta retirada', () => {
   const { examen } = nuevo();
   const vuelto = examen.rehidratar({
     ids: ['ej-geo-001', 'borrada-hace-tiempo', 'ej-geo-002'],
     semilla: 4, barajarOpciones: true
   });
-  assert.deepEqual(vuelto.items.map((i) => i.pregunta.id), ['ej-geo-001', 'ej-geo-002']);
+  assert.equal(vuelto, null);
+});
+
+test('un preset por IDs conserva exactamente el orden declarado', () => {
+  const { examen } = nuevo();
+  const ids = ['ej-ast-002', 'ej-geo-001', 'ej-ast-001'];
+  const e = examen.construir({ ids, barajarPreguntas: false, barajarOpciones: false });
+  assert.deepEqual(e.items.map((i) => i.pregunta.id), ids);
+  assert.deepEqual(e.idsFuente, ids);
+  assert.equal(e.barajarPreguntas, false);
+});
+
+test('rehidratar rechaza respuestas si cambia el orden o texto de opciones', () => {
+  const { examen, banco } = nuevo();
+  const p = banco.porId('ej-geo-001');
+  const guardado = {
+    ids: [p.id], semilla: 1, barajarOpciones: false,
+    firmas: { [p.id]: examen.firmaPregunta(p) }
+  };
+  assert.ok(examen.rehidratar(guardado));
+  p.opciones.reverse();
+  assert.equal(examen.rehidratar(guardado), null);
 });
 
 test('con barajarOpciones false el orden es el de origen', () => {

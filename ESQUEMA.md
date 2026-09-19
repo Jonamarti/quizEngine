@@ -37,18 +37,23 @@ servidor y a la vez cargar los ficheros desde Node con `require()` para validarl
   seleccionar: 1,            // opcional, por defecto 1. Nº de opciones correctas
   nota: '...',               // opcional. Clave de la respuesta, se muestra al revisar
   fuente: '...',             // opcional pero recomendado. Trazabilidad
-  origen: 'generada'         // opcional: 'generada' | 'autorada'
+  origen: 'generada',        // opcional: 'generada' | 'autorada'
+  varianteDe: 'riesgo-producto' // opcional: variantes deliberadas con igual enunciado
 }
 ```
 
 Reglas que impone el validador:
 
 - `id` único en todo el banco.
+- El `id` empieza por letra o número y sólo contiene letras ASCII, números, `_`
+  o `-`. `__proto__`, `prototype` y `constructor` están reservados.
 - Entre 2 y 8 opciones, todas con `texto` y `explicacion` no vacíos,  **también las
   incorrectas**.
 - El número de opciones con `correcta: true` debe ser exactamente `seleccionar`.
 - Sin textos de opción repetidos dentro de una misma pregunta.
 - Sin enunciados repetidos en todo el banco.
+- Si dos variantes necesitan exactamente el mismo enunciado, ambas deben declarar
+  el mismo `varianteDe`; así la repetición queda documentada en vez de ser accidental.
 - Toda clave y todo valor de `facetas` deben estar declarados en `TEMA.facetas`.
 
 ## Imagen de una pregunta
@@ -92,6 +97,8 @@ window.TEMA = {
   subtitulo: 'Exámenes con explicación en cada opción',
   prefijoAlmacen: 'combatquiz_v1_',   // namespace de localStorage
   aprobado: 0.7,                       // fracción para aprobar
+  idioma: 'es',                        // opcional: atributo lang del documento
+  locale: 'es-ES',                     // opcional: formato de fecha de Intl
   duraciones: [
     { valor: 'sin', etiqueta: 'Sin temporizador', minutos: 0 },
     { valor: '20',  etiqueta: '20 minutos',       minutos: 20 }
@@ -151,6 +158,27 @@ Un examen que he hecho yo manualmente, con filtros fijos.
 Los valores de `filtros` son siempre arrays. Un array vacío o una faceta ausente significan
 «cualquiera».
 
+### Preset cerrado
+
+Cuando la composición forma parte del examen —por ejemplo, un simulacro oficial—,
+`ids` enumera exactamente sus preguntas. `barajarPreguntas: false` conserva ese orden;
+`barajarOpciones: false` conserva también el orden de las respuestas.
+
+```js
+{
+  id: 'simulacro-1',
+  titulo: 'Simulacro 1',
+  ids: ['istqb-e01-q01', 'istqb-e01-q02', 'istqb-e01-q03'],
+  barajarPreguntas: false,
+  barajarOpciones: false,
+  duracion: '60'
+}
+```
+
+Los IDs deben existir, no pueden repetirse y `n`, si se declara, no puede superar
+la lista. Sin `barajarPreguntas: false`, el motor conserva la composición pero
+baraja las preguntas en cada intento.
+
 ## Grupos de exámenes
 
 Cuando hay muchos presets, una rejilla plana deja de servir para encontrarlos. Un tema
@@ -173,4 +201,3 @@ declare `grupos` se sigue pintando plano, que es lo razonable con cuatro exámen
 Un preset sin `grupo`, o con uno que el tema no declara, no desaparece: cae en una sección
 final «Otros». El validador avisa del primer caso y da error en el segundo, porque apuntar a
 un grupo inexistente casi siempre es una errata.
-

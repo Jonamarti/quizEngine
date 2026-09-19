@@ -176,3 +176,32 @@ test('un tema sin carpeta medios se construye igual', (t) => {
   assert.equal(r.codigo, 0, r.salida);
   assert.ok(!fs.existsSync(path.join(dir, 'sitio', 'medios')));
 });
+
+test('rechaza salidas solapadas sin alterar el tema', (t) => {
+  const dir = tmp(t);
+  const tema = path.join(dir, 'tema');
+  fs.cpSync(EJEMPLO, tema, { recursive: true });
+  const antes = fs.readFileSync(path.join(tema, 'config.js'), 'utf8');
+  const r = construir(tema, path.join(tema, 'web'));
+  assert.equal(r.codigo, 1);
+  assert.match(r.salida, /solaparse con el tema/);
+  assert.equal(fs.readFileSync(path.join(tema, 'config.js'), 'utf8'), antes);
+});
+
+test('un fallo previo a publicar conserva la salida anterior', (t) => {
+  const dir = tmp(t);
+  const destino = path.join(dir, 'sitio');
+  assert.equal(construir(EJEMPLO, destino).codigo, 0);
+  fs.writeFileSync(path.join(destino, 'marca.txt'), 'sitio anterior');
+
+  const motorFalso = path.join(dir, 'motor-falso');
+  fs.mkdirSync(path.join(motorFalso, 'scripts'), { recursive: true });
+  fs.cpSync(path.join(RAIZ, 'web'), path.join(motorFalso, 'web'), { recursive: true });
+  fs.copyFileSync(CONSTRUIR, path.join(motorFalso, 'scripts', 'construir.js'));
+  fs.writeFileSync(path.join(motorFalso, 'web', 'index.html'), '<html>sin marcador</html>');
+  const r = spawnSync(process.execPath,
+    [path.join(motorFalso, 'scripts', 'construir.js'), '--tema', EJEMPLO, '--salida', destino],
+    { encoding: 'utf8' });
+  assert.equal(r.status, 1);
+  assert.equal(fs.readFileSync(path.join(destino, 'marca.txt'), 'utf8'), 'sitio anterior');
+});

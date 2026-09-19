@@ -102,6 +102,21 @@ test('enunciado repetido, aunque cambie la caja', (t) => {
   assert.match(r.salida, /enunciado repetido/);
 });
 
+test('permite variantes deliberadas con el mismo enunciado', (t) => {
+  const r = validarRoto(t, (TEMA, p) => {
+    p[0].varianteDe = 'objetivo-pruebas';
+    p[1].varianteDe = 'objetivo-pruebas';
+    p[1].enunciado = p[0].enunciado;
+  });
+  assert.equal(r.codigo, 0, r.salida);
+});
+
+test('rechaza IDs que podrían colisionar en DOM u objetos', (t) => {
+  const r = validarRoto(t, (TEMA, p) => { p[0].id = '__proto__'; });
+  assert.equal(r.codigo, 1);
+  assert.match(r.salida, /sólo letras ASCII/);
+});
+
 test('una opción incorrecta sin explicación también falla', (t) => {
   const r = validarRoto(t, (TEMA, p) => { delete p[0].opciones[1].explicacion; });
   assert.equal(r.codigo, 1);
@@ -136,6 +151,40 @@ test('una faceta que el tema no declara', (t) => {
   const r = validarRoto(t, (TEMA, p) => { p[0].facetas.inventada = 'x'; });
   assert.equal(r.codigo, 1);
   assert.match(r.salida, /no está declarada en TEMA\.facetas/);
+});
+
+test('valida presets cerrados por IDs', (t) => {
+  const r = validarRoto(t, (TEMA) => {
+    TEMA.presets = [{
+      id: 'cerrado', titulo: 'Cerrado', ids: ['p-2', 'p-1'],
+      barajarPreguntas: false, barajarOpciones: false
+    }];
+  });
+  assert.equal(r.codigo, 0, r.salida);
+});
+
+test('un preset no puede referenciar una pregunta inexistente', (t) => {
+  const r = validarRoto(t, (TEMA) => {
+    TEMA.presets = [{ id: 'roto', titulo: 'Roto', ids: ['no-existe'] }];
+  });
+  assert.equal(r.codigo, 1);
+  assert.match(r.salida, /pregunta inexistente/);
+});
+
+test('detecta ciclos entre dependencias de facetas', (t) => {
+  const r = validarRoto(t, (TEMA) => {
+    TEMA.facetas[0].dependeDe = { nivel: 'uno' };
+    TEMA.facetas[1].dependeDe = { materia: 'a' };
+  });
+  assert.equal(r.codigo, 1);
+  assert.match(r.salida, /Ciclo en dependencias/);
+});
+
+test('tipos estructurales inválidos dan diagnóstico y no stack trace', (t) => {
+  const r = validarRoto(t, (TEMA) => { TEMA.facetas = 'no es un array'; });
+  assert.equal(r.codigo, 1);
+  assert.match(r.salida, /TEMA\.facetas debe ser un array/);
+  assert.doesNotMatch(r.salida, /TypeError|at main/);
 });
 
 test('un valor que la faceta no declara', (t) => {

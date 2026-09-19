@@ -4,6 +4,7 @@
 (function (g) {
   g.QZ = g.QZ || {};
   var t = function () { return g.QZ.t.apply(null, arguments); };
+  var focoAnterior = null;
 
   function esc(texto) {
     return String(texto == null ? '' : texto)
@@ -23,8 +24,10 @@
       window.scrollTo(0, 0);
     },
 
-    modal: function (titulo, mensajeHTML, botones) {
+    modal: function (titulo, mensajeHTML, botones, opciones) {
       var m = document.querySelector('#modal');
+      opciones = opciones || {};
+      focoAnterior = document.activeElement;
       document.querySelector('#modal-titulo').textContent = titulo;
       document.querySelector('#modal-mensaje').innerHTML = mensajeHTML;
       var cont = document.querySelector('#modal-acciones');
@@ -38,12 +41,24 @@
       });
       m.classList.remove('oculto');
       m.dataset.abierto = '1';
+      m.dataset.cerrable = opciones.cerrable === false ? '0' : '1';
+      var app = document.querySelector('#app');
+      if (app) app.inert = true;
+      var primero = cont.querySelector('button');
+      if (primero) primero.focus();
     },
 
-    cerrarModal: function () {
+    cerrarModal: function (forzar) {
       var m = document.querySelector('#modal');
+      if (!forzar && m.dataset.cerrable === '0') return false;
       m.classList.add('oculto');
       delete m.dataset.abierto;
+      delete m.dataset.cerrable;
+      var app = document.querySelector('#app');
+      if (app) app.inert = false;
+      if (focoAnterior && focoAnterior.focus) focoAnterior.focus();
+      focoAnterior = null;
+      return true;
     },
 
     tiempo: function (seg) {
@@ -53,10 +68,12 @@
     },
 
     fecha: function (ms) {
-      var d = new Date(ms);
-      var p = function (n) { return String(n).padStart(2, '0'); };
-      return p(d.getDate()) + '/' + p(d.getMonth() + 1) + '/' + d.getFullYear() +
-        ' ' + p(d.getHours()) + ':' + p(d.getMinutes());
+      var locale = (g.TEMA && g.TEMA.locale) ||
+        (document.documentElement && document.documentElement.lang) || 'es';
+      return new Intl.DateTimeFormat(locale, {
+        year: 'numeric', month: '2-digit', day: '2-digit',
+        hour: '2-digit', minute: '2-digit'
+      }).format(new Date(ms));
     },
 
     etiquetaValor: function (facetaId, valorId) {
@@ -90,7 +107,7 @@
         (Array.isArray(v) ? v : [v]).forEach(function (x) {
           var color = self.colorValor(f.id, x);
           var estilo = color
-            ? ' style="background:' + esc(color) + '22;border-color:' + esc(color) + '"'
+            ? ' style="background:color-mix(in srgb, ' + esc(color) + ' 14%, transparent);border-color:' + esc(color) + '"'
             : '';
           html += '<span class="chip"' + estilo + '>' + esc(self.etiquetaValor(f.id, x)) + '</span>';
         });
@@ -123,4 +140,15 @@
         : '') +
       '</figure>';
   };
+
+  document.addEventListener('keydown', function (e) {
+    var m = document.querySelector('#modal');
+    if (!m || !m.dataset.abierto || e.key !== 'Tab') return;
+    var focos = Array.prototype.slice.call(m.querySelectorAll(
+      'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])'));
+    if (!focos.length) return;
+    var primero = focos[0], ultimo = focos[focos.length - 1];
+    if (e.shiftKey && document.activeElement === primero) { e.preventDefault(); ultimo.focus(); }
+    else if (!e.shiftKey && document.activeElement === ultimo) { e.preventDefault(); primero.focus(); }
+  });
 })(typeof window !== 'undefined' ? window : globalThis);
